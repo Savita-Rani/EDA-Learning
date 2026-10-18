@@ -320,3 +320,54 @@ phase that opens a file (e.g., if a future save/export feature is added)
 should use the same check. Worth remembering as a general lesson: don't
 assume standard-mandated iostream behavior holds on every toolchain
 without verifying.
+
+---
+
+### 2026-10-18 — Phase 6 is independent, like Phase 2 and 4
+
+**Decision:** `LogicValue`/`LogicGate<T>` (Phase 6) are a new,
+independent hierarchy — not built on `Component`/`Gate`, no dependency on
+either. New library `eda_generic`.
+
+**Why:** `LogicGate<bool>` solves the exact same problem Phase 1's `Gate`
+and Phase 2's `Component` solve (AND/OR/NOT/NAND/NOR/XOR truth tables),
+just generalized via templates to also support `LogicValue`. Same
+reasoning as Phase 4 vs. Phase 3: same-problem-different-technique means
+independent, not a dependency — there'd be nothing to meaningfully
+"build on" here; `LogicGate<T>` isn't new capability layered on
+`Component`, it's a more general replacement technique for the same
+capability.
+
+**How to apply:** continues the pattern established after Phase 4 — ask
+"is this phase solving a NEW problem using an old building block (→
+depend), or the SAME problem a previous phase solved, differently (→
+independent)?" before wiring up a new phase's dependencies.
+
+---
+
+### 2026-10-18 — Templates require header-only definitions; concepts over SFINAE
+
+**Finding:** `LogicGate<T>` (a class template) cannot be split into
+`.h`/`.cpp` the way every previous phase's classes were — the compiler
+needs the complete definition at every instantiation site
+(`LogicGate<bool>`, `LogicGate<LogicValue>`, each in different
+translation units), which a separately-compiled `.cpp` can't provide.
+`LogicGate.h` is header-only; only `LogicValue.cpp` (ordinary, non-template
+functions) gets compiled into `eda_generic`.
+
+**Decision:** constrain `LogicGate<T>` with a C++20 concept
+(`LogicType`) rather than leaving it an unconstrained template or using
+pre-C++20 SFINAE/`enable_if`. Verified the payoff directly: compiled
+`LogicGate<int>` standalone and confirmed the diagnostic names the exact
+unsatisfied constraint (`LogicType`) at the exact instantiation site,
+rather than a wall of substitution-failure noise from inside
+`evaluate()`'s body. Also confirmed a subtler point while doing this:
+the failure path was "found the `bool` overload via `int`→`bool`
+implicit conversion, but it returns the wrong type," not "found no
+overload at all" — demonstrating why the concept's `-> std::same_as<T>`
+return-type check matters, not just "is this expression well-formed."
+
+**How to apply:** when a future phase needs a generic/templated
+component, constrain it with a concept expressing the actual required
+operations, and verify the rejection path actually produces a useful
+diagnostic (don't just assume it does).

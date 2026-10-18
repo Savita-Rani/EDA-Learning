@@ -31,3 +31,6 @@ add_subdirectory(frontend/event_demo)
 
 # Phase 5 (File I/O) — new sibling directory, everything above is untouched.
 add_subdirectory(frontend/fileio_demo)
+
+# Phase 6 (Templates) — new sibling directory, everything above is untouched.
+add_subdirectory(frontend/generic_demo)

@@ -90,3 +90,22 @@ else()
 endif()
 
 gtest_discover_tests(eda_fileio_tests)
+
+# --- Phase 6 (Templates) — separate target, everything above untouched ----
+# Tests LogicValue + LogicGate<T> (eda_generic), independent of everything
+# else — a parallel technique, not built on Component/Gate.
+
+add_executable(eda_generic_tests
+    test_logic_value.cpp
+    test_logic_gate.cpp
+)
+
+target_link_libraries(eda_generic_tests PRIVATE eda_generic GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_generic_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_generic_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_generic_tests)

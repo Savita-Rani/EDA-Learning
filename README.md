@@ -23,8 +23,11 @@ roadmap, and what-we-learned notes per phase.
 - **Phase 5 — File I/O** (new files; depends on Phase 3's `Netlist` —
   new capability, not a parallel technique; found and fixed a second
   real, toolchain-specific bug): `docs/phases/phase5.md`.
+- **Phase 6 — Templates** (new files; independent of `Component`/`Gate`,
+  same reasoning as Phase 4 — generalizes the same gate behaviors via a
+  C++20-concept-constrained template, `LogicGate<T>`): `docs/phases/phase6.md`.
 
-All five coexist in the same build.
+All six coexist in the same build.
 
 ## Build, run, test
 
@@ -38,13 +41,14 @@ cmake --build build
 ./build/bin/eda_netlist_demo.exe     # Phase 3 frontend
 ./build/bin/eda_event_demo.exe       # Phase 4 frontend
 ./build/bin/eda_fileio_demo.exe      # Phase 5 frontend
-cd build && ctest --output-on-failure   # all tests, all phases (28 total)
+./build/bin/eda_generic_demo.exe     # Phase 6 frontend
+cd build && ctest --output-on-failure   # all tests, all phases (38 total)
 ```
 
 Or open the folder in VS Code (CMake Tools + C/C++ extensions): build with
 `Ctrl+Shift+B`, debug with `F5` (`.vscode/tasks.json` / `launch.json`).
 
-See `docs/phases/phase1.md` through `phase5.md` for the full walkthrough
+See `docs/phases/phase1.md` through `phase6.md` for the full walkthrough
 (build details, VS Code steps, what each test checks and why,
 troubleshooting).
 
@@ -58,17 +62,23 @@ backend/
   include/eda/EventSimulator.h  Phase 4 public API (depends on Component,
                                   independent of Netlist — parallel technique)
   include/eda/NetlistLoader.h   Phase 5 public API (depends on Netlist)
+  include/eda/LogicValue.h      Phase 6 public API part 1 (independent)
+  include/eda/LogicGate.h       Phase 6 public API part 2 — header-only
+                                  template, no corresponding .cpp (see
+                                  docs/phases/phase6.md for why)
   src/Gate.cpp              -> eda_core (static library)
   src/Component.cpp         -> eda_oop (static library)
   src/Netlist.cpp           -> eda_netlist (static library, links eda_oop)
   src/EventSimulator.cpp    -> eda_event (static library, links eda_oop)
   src/NetlistLoader.cpp     -> eda_fileio (static library, links eda_netlist)
+  src/LogicValue.cpp        -> eda_generic (static library)
 frontend/
   console/              Phase 1 UI — links eda_core only
   console_phase2/       Phase 2 UI — links eda_oop only
   netlist_demo/         Phase 3 UI — links eda_netlist (transitively eda_oop)
   event_demo/           Phase 4 UI — links eda_event (transitively eda_oop)
   fileio_demo/           Phase 5 UI — links eda_fileio; circuits/*.nl data files
+  generic_demo/          Phase 6 UI — links eda_generic
   (imgui/, qt/ later — same pattern: new sibling dir, link the backend lib)
 tests/
   test_gate.cpp             -> eda_tests (Phase 1, GoogleTest)
@@ -76,10 +86,12 @@ tests/
   test_netlist.cpp            -> eda_netlist_tests (Phase 3, GoogleTest)
   test_event_simulator.cpp     -> eda_event_tests (Phase 4, GoogleTest)
   test_netlist_loader.cpp       -> eda_fileio_tests (Phase 5, GoogleTest)
+  test_logic_value.cpp,
+  test_logic_gate.cpp            -> eda_generic_tests (Phase 6, GoogleTest)
 docs/
   ROADMAP.md            all 12 phases, concepts + status + why (causal chain)
   DECISIONS.md           dated log of choices + rationale
-  phases/phase1.md ... phase5.md  one doc per phase
+  phases/phase1.md ... phase6.md  one doc per phase
   notes/gtest.md, ...    cross-cutting reference notes (revision/interview prep)
 .vscode/              tasks.json (build), launch.json (gdb debug), settings.json
 build/                (gitignored) CMake build output -> build/bin/*.exe

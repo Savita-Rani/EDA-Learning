@@ -90,3 +90,25 @@ if(MSVC)
 else()
     target_compile_options(eda_fileio PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# --- Phase 6 (Templates) — separate target, nothing above touched --------
+# LogicGate<T> (eda/LogicGate.h) + LogicValue (eda/LogicValue.h) are a
+# NEW, INDEPENDENT hierarchy — not built on Component/Gate, and don't
+# touch them. Same gate behaviors, generalized via templates to work over
+# more than one signal value type. A parallel technique, like Phase 4 was
+# to Phase 3. See docs/DECISIONS.md, "Phase 6 is independent, like Phase
+# 2 and 4." Only LogicValue.cpp needs compiling — LogicGate.h's template
+# class is necessarily header-only (see the comment at its top for why).
+
+add_library(eda_generic STATIC
+    src/LogicValue.cpp
+)
+
+target_include_directories(eda_generic PUBLIC include)
+target_compile_features(eda_generic PUBLIC cxx_std_20)
+
+if(MSVC)
+    target_compile_options(eda_generic PRIVATE /W4)
+else()
+    target_compile_options(eda_generic PRIVATE -Wall -Wextra -Wpedantic)
+endif()
