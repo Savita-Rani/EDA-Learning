@@ -191,3 +191,34 @@ later phase's design seems to genuinely require changing an earlier
 phase's file (e.g. a future netlist phase wanting `Gate` itself to
 change), stop and ask the user explicitly first rather than assuming —
 that would contradict this default.
+
+---
+
+### 2026-10-18 — Phase 3 depends on Phase 2 (not a violation of phase isolation)
+
+**Decision:** `Netlist` (Phase 3) stores `std::unique_ptr<Component>` —
+Phase 2's class, used as-is, not duplicated. New library `eda_netlist`
+links `eda_oop` (`PUBLIC`). No file belonging to Phase 2 (or Phase 1) was
+edited; `Netlist.h`/`Netlist.cpp` are entirely new files.
+
+**Why this is different from Phase 2's relationship to Phase 1:** Phase 2
+was a deliberate *parallel reimplementation* of Phase 1's `Gate` — same
+behavior, built twice, specifically so the switch-based and polymorphic
+versions could be compared side by side. Phase 3 is not a reimplementation
+of anything; it's new functionality (a netlist/graph) that the roadmap's
+own plan (and Phase 2's "Next up" note, written before Phase 3 started)
+said should be built *using* `Component`, because that's the exact
+interface a heterogeneous collection of gate types needs. The
+phase-isolation rule (`docs/DECISIONS.md`, "Phase isolation" above) says
+never *edit* a previous phase's files — it was never a rule against
+*depending on* one when the plan calls for it. Reusing `Component` here
+is the payoff Phase 2 was explicitly built to set up.
+
+**How to apply:** when a later phase's design genuinely calls for reusing
+an earlier phase's class/library (as opposed to reimplementing it for
+comparison, like Phase 2 did), link against it — don't duplicate it just
+to force file-level independence. The rule to keep protecting is "never
+edit," not "never depend on." If it's ambiguous which situation a new
+phase is in, check whether the *previous* phase's own "Next up" section
+already called for this dependency (it did, here) — if not, ask before
+assuming reuse is intended over reimplementation.

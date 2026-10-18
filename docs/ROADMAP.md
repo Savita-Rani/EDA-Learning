@@ -22,8 +22,8 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
 | 0 | Scaffold | Project skeleton, CMake, git, docs | build systems, header/source split | ✅ done |
 | 1 | Basics | `Gate` class, truth tables (console) | classes, `enum class`, `switch`, `const` methods, `std::vector` | ✅ done |
 | 2 | OOP | `Component` hierarchy (new, separate from `Gate`) | inheritance, virtual/override, abstract base classes, polymorphism, `unique_ptr` preview | ✅ done |
-| 3 | STL | Netlist as a graph, `Wire`/`Signal` | containers, iterators, algorithms, references vs pointers, topological sort | ⏳ next |
-| 4 | Simulation engine | Event-driven scheduler | lambdas, `std::function`, `priority_queue`, Observer pattern | planned |
+| 3 | STL | Netlist as a graph (depends on Phase 2's `Component`) | `unordered_map`/`vector`/`queue`, topological sort (Kahn's algorithm), exceptions | ✅ done |
+| 4 | Simulation engine | Event-driven scheduler | lambdas, `std::function`, `priority_queue`, Observer pattern | ⏳ next |
 | 5 | File I/O | Netlist file format parser | streams, string parsing, exceptions | planned |
 | 6 | Templates | Generic signal values (0/1/X/Z) | templates, generic programming, (C++20 concepts) | planned |
 | 7 | Memory | Smart pointers, RAII, move semantics | `unique_ptr`/`shared_ptr`, rule of 5, move semantics | planned |
@@ -44,8 +44,8 @@ row's "leaves open" is the next row's "fixes."
 |---|---|---|---|
 | 1 | Basics | *(starting point — nothing to fix yet)* | A `switch` over gate types means every new gate requires editing existing functions (`evaluate()` *and* `name()`). Doesn't scale. |
 | 2 | OOP | New gate type = new class, zero edits elsewhere (polymorphism replaces the `switch`). | Gates are still isolated objects — nothing connects them into a circuit; no way to hold/iterate a *mix* of component types as a graph. |
-| 3 | STL | A netlist (graph of `Component`s + wires) can now be stored, iterated, and ordered via containers/topological sort. | Nothing *runs* the circuit automatically — you still manually call `evaluate()` in the order you compute. |
-| 4 | Simulation engine | An event-driven scheduler propagates signal changes automatically, in correct order, via a callback/event queue. | Circuits only exist if hand-built in C++ code — no way to describe a circuit as data. |
+| 3 | STL ✅ | A netlist (graph of `Component`s + wires, via `std::unordered_map`/`vector`) now evaluates itself automatically in correct order — `Netlist::simulate()` computes a topological sort (Kahn's algorithm) and runs every component once, in dependency order. Fixed Phase 2's "gates are isolated objects" gap. | `simulate()` does a **full recompute of every component, every call** — no notion of "only re-evaluate what a changed input actually affects," and no concept of discrete time, so sequential elements (flip-flops, clocked delay) have no way to exist. Fine for a handful of gates; doesn't scale to a large circuit re-simulated after one input flips. |
+| 4 | Simulation engine | An event-driven scheduler: only re-evaluates components downstream of an actual signal change, via a callback/event queue ordered by time — fixes Phase 3's full-recompute limitation directly. | Circuits are still hand-built in C++ code (`addComponent` calls) — no way to describe a circuit as data/load one from a file. |
 | 5 | File I/O | Netlists load from a text file — describe a circuit as data, not code. | Signals are hardcoded `bool` — no unknown/floating (`X`) or high-impedance (`Z`) states, no multi-bit buses. |
 | 6 | Templates | Signal value type becomes generic — richer states possible without rewriting the engine per type. | Netlists/components are heap-allocated through the hierarchy with no rigorous ownership story — who deletes what, and when, isn't yet governed by explicit rules. |
 | 7 | Memory management | Smart pointers + rule-of-5 + move semantics make ownership explicit and leak-proof, formalizing what Phase 2's `unique_ptr` preview started informally. | Simulating a large netlist is single-threaded — independent parts of the circuit evaluate serially even though nothing requires that. |

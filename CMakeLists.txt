@@ -22,3 +22,6 @@ add_subdirectory(tests)
 
 # Phase 2 (OOP) — new sibling directory, frontend/console above is untouched.
 add_subdirectory(frontend/console_phase2)
+
+# Phase 3 (STL) — new sibling directory, everything above is untouched.
+add_subdirectory(frontend/netlist_demo)

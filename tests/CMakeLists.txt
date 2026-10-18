@@ -39,3 +39,20 @@ else()
 endif()
 
 gtest_discover_tests(eda_component_tests)
+
+# --- Phase 3 (STL) — separate target, everything above is untouched -------
+# Tests Netlist (eda_netlist), which depends on eda_oop's Component.
+
+add_executable(eda_netlist_tests
+    test_netlist.cpp
+)
+
+target_link_libraries(eda_netlist_tests PRIVATE eda_netlist GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_netlist_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_netlist_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_netlist_tests)

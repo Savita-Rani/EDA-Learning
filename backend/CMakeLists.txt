@@ -32,3 +32,22 @@ if(MSVC)
 else()
     target_compile_options(eda_oop PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# --- Phase 3 (STL) — separate target, eda_oop above is untouched ---------
+# Netlist (eda/Netlist.h) DEPENDS ON eda_oop's Component — reused, not
+# duplicated, not edited. Unlike Phase 2 (a parallel reimplementation of
+# Phase 1 for comparison), Phase 3 is meant to build on Phase 2 directly;
+# see docs/DECISIONS.md, "Phase 3 depends on Phase 2."
+
+add_library(eda_netlist STATIC
+    src/Netlist.cpp
+)
+
+target_include_directories(eda_netlist PUBLIC include)
+target_link_libraries(eda_netlist PUBLIC eda_oop)
+
+if(MSVC)
+    target_compile_options(eda_netlist PRIVATE /W4)
+else()
+    target_compile_options(eda_netlist PRIVATE -Wall -Wextra -Wpedantic)
+endif()
