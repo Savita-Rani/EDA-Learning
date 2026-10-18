@@ -41,12 +41,19 @@ and a status snapshot, not the "why."
   `ParallelSimulator` depends on it + `Component` — level-based parallel
   evaluation, verified race-free across 20 repeated test runs, honest
   artificial-workload speedup demo): `docs/phases/phase8.md`.
+- **Phase 9 — Frontend (Dear ImGui)** (new files; depends on Phase 3's
+  `Netlist`; first genuinely external dependencies — ImGui fetched as
+  source via `FetchContent`, GLFW via pacman, OpenGL from the system;
+  first phase whose main deliverable needs a human to actually look at
+  it — see its doc for what was and wasn't automatically verified):
+  `docs/phases/phase9.md`.
 
-All eight coexist in the same build.
+All nine coexist in the same build.
 
 ## Build, run, test
 
-Requires: g++ (MinGW/MSYS2 — confirmed g++ 13.2.0), CMake >= 3.15.
+Requires: g++ (MinGW/MSYS2 — confirmed g++ 13.2.0), CMake >= 3.15,
+internet access on first configure (to fetch Dear ImGui).
 
 ```powershell
 cmake -S . -B build -G "MinGW Makefiles"
@@ -59,13 +66,14 @@ cmake --build build
 ./build/bin/eda_generic_demo.exe     # Phase 6 frontend
 ./build/bin/eda_memory_demo.exe      # Phase 7 frontend
 ./build/bin/eda_parallel_demo.exe    # Phase 8 frontend
-cd build && ctest --output-on-failure   # all tests, all phases (66 total)
+./build/bin/eda_imgui_demo.exe       # Phase 9 frontend — the first real GUI; run this one yourself and look
+cd build && ctest --output-on-failure   # all tests, all phases (70 total)
 ```
 
 Or open the folder in VS Code (CMake Tools + C/C++ extensions): build with
 `Ctrl+Shift+B`, debug with `F5` (`.vscode/tasks.json` / `launch.json`).
 
-See `docs/phases/phase1.md` through `phase8.md` for the full walkthrough
+See `docs/phases/phase1.md` through `phase9.md` for the full walkthrough
 (build details, VS Code steps, what each test checks and why,
 troubleshooting).
 
@@ -88,6 +96,7 @@ backend/
   include/eda/FileHandle.h      Phase 7 — ordinary class (independent)
   include/eda/ThreadPool.h      Phase 8 — independent, generic infrastructure
   include/eda/ParallelSimulator.h Phase 8 — depends on ThreadPool + Component
+  include/eda/WaveformBuffer.h  Phase 9 — INTERFACE lib (no .cpp at all, independent)
   src/Gate.cpp              -> eda_core (static library)
   src/Component.cpp         -> eda_oop (static library)
   src/Netlist.cpp           -> eda_netlist (static library, links eda_oop)
@@ -108,7 +117,10 @@ frontend/
   memory_demo/           Phase 7 UI — links eda_memory AND eda_oop (for Component
                            to own; doesn't make eda_memory itself depend on it)
   parallel_demo/         Phase 8 UI — links eda_parallel
-  (imgui/, qt/ later — same pattern: new sibling dir, link the backend lib)
+  imgui_demo/            Phase 9 UI — links eda_netlist + eda_waveform + the
+                           fetched imgui lib (ImGui/GLFW/OpenGL); see its
+                           CMakeLists.txt for the FetchContent setup
+  (qt/ later, if ever ported — same pattern: new sibling dir, link the backend lib)
 tests/
   test_gate.cpp             -> eda_tests (Phase 1, GoogleTest)
   test_component.cpp         -> eda_component_tests (Phase 2, GoogleTest)
@@ -122,11 +134,13 @@ tests/
   test_file_handle.cpp            -> eda_memory_tests (Phase 7, GoogleTest)
   test_thread_pool.cpp              -> eda_threadpool_tests (Phase 8, GoogleTest)
   test_parallel_simulator.cpp        -> eda_parallel_tests (Phase 8, GoogleTest)
+  test_waveform_buffer.cpp             -> eda_waveform_tests (Phase 9, GoogleTest —
+                                           the only part of Phase 9 with test coverage)
 docs/
   PROJECT_IDEA.md       the vision/why, read this first
   ROADMAP.md            all 12 phases, concepts + status + why (causal chain)
   DECISIONS.md           dated log of choices + rationale
-  phases/phase1.md ... phase8.md  one doc per phase
+  phases/phase1.md ... phase9.md  one doc per phase
   notes/gtest.md, ...    cross-cutting reference notes (revision/interview prep)
 .vscode/              tasks.json (build), launch.json (gdb debug), settings.json
 build/                (gitignored) CMake build output -> build/bin/*.exe

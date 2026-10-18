@@ -479,3 +479,64 @@ most runs and fails occasionally). Zero failures across 40 runs.
 default to "mutation + notification under the same lock" unless there's
 a measured, specific reason to split them — the lost-wakeup risk from
 splitting them is easy to introduce and easy to miss in a quick read.
+
+---
+
+### 2026-10-18 — Phase 9's GUI stack: Dear ImGui (fetched as source) + GLFW (pacman) + OpenGL (system)
+
+**Decision:** Dear ImGui pulled in via CMake `FetchContent`, pinned to
+`v1.93.0` (checked against GitHub's actual latest release via the API
+at the time, not guessed from memory). GLFW installed via `pacman -S
+mingw-w64-ucrt-x86_64-glfw`. OpenGL via the system's `opengl32` (ships
+with the base MinGW toolchain, confirmed `libopengl32.a` present —
+no extra install).
+
+**Why ImGui specifically isn't a pacman package like GoogleTest was:**
+checked first (`pacman -Ss imgui`) — only Python bindings exist for
+this toolchain, no C++ library package. This isn't a gap; Dear ImGui is
+explicitly designed to be compiled directly into the consuming
+project's own build (no "ImGui.dll" exists to link against) —
+`FetchContent` + compiling its `.cpp` files ourselves is the library's
+own intended integration path, not a workaround for a missing package.
+
+**Why GLFW specifically, not SDL2 or a native Win32 backend:** GLFW has
+a proper CMake config package (`find_package(glfw3 CONFIG)`) and is
+one of Dear ImGui's two most common/best-supported backend
+combinations (the other being SDL2) — picked for that support level,
+not for any technical advantage over SDL2 for this project's needs.
+
+**How to apply:** `main.cpp` depends on Phase 3's `Netlist` (new GUI
+capability built on an existing engine, not a parallel technique) —
+reconfirms the established "new problem, old building block → depend"
+rule one more time. The vendored `imgui` CMake target deliberately
+does NOT get this project's `-Wall -Wextra -Wpedantic` flags — those
+are for code this project owns.
+
+---
+
+### 2026-10-18 — Phase 9's UI itself has no GoogleTest coverage, by deliberate scope decision
+
+**Decision:** only `WaveformBuffer` (pure logic, no ImGui/GLFW
+dependency) gets a GoogleTest suite. The actual rendering —
+`ImGui::Checkbox`/`PlotLines`/the GLFW event loop — has none.
+
+**Why:** there is no practical, meaningful assertion to write against
+"does this rendered frame look correct" without either a human looking
+at it or a much heavier pixel-diffing test infrastructure this small
+project doesn't warrant. Writing hollow tests that merely call ImGui
+functions without checking anything real would be worse than no tests
+— false confidence. Instead: verified actual *functional* correctness
+(does the app launch, run its full lifecycle, and shut down cleanly
+without crashing) via a `--max-frames=N` automated smoke-test mode,
+confirmed exit code 0 after a real window + GL context + full ImGui
+init/render/shutdown cycle. Visual correctness (does it *look* right)
+was explicitly left for the user to confirm by actually running the
+app — stated plainly rather than silently claimed.
+
+**How to apply:** this is the template for any future
+rendering/UI-heavy work in this project — separate the testable logic
+into its own dependency-free piece (as `WaveformBuffer` was), give
+*that* full coverage, and use an automated smoke-test affordance for
+the rendering shell's basic liveness, while being explicit to the user
+about what wasn't (and likely can't practically be) verified
+automatically.

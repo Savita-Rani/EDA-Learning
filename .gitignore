@@ -9,3 +9,7 @@ compile_commands.json
 # frontend/memory_demo's trace log) — not build output, not test
 # output (tests clean up their own temp files), just incidental.
 *.log
+
+# ImGui's own auto-generated window-layout settings file, written
+# next to wherever frontend/imgui_demo's executable is run from.
+imgui.ini

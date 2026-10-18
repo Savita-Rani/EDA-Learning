@@ -172,3 +172,14 @@ if(MSVC)
 else()
     target_compile_options(eda_parallel PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# --- Phase 9 (Frontend) — separate target, nothing above touched ---------
+# WaveformBuffer (eda/WaveformBuffer.h) is independent, generic logic —
+# the one piece of this phase that's testable with GoogleTest (the
+# ImGui/GLFW rendering itself isn't; see docs/phases/phase9.md). No .cpp
+# at all (every member is defined inline in the header), so this is an
+# INTERFACE library, not STATIC — there is nothing to compile, only an
+# include path to propagate to whatever links it.
+
+add_library(eda_waveform INTERFACE)
+target_include_directories(eda_waveform INTERFACE include)

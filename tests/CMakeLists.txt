@@ -161,3 +161,20 @@ else()
 endif()
 
 gtest_discover_tests(eda_parallel_tests)
+
+# --- Phase 9 (Frontend) — separate target, everything above untouched ----
+# Tests WaveformBuffer (eda_waveform, INTERFACE — no .cpp of its own).
+
+add_executable(eda_waveform_tests
+    test_waveform_buffer.cpp
+)
+
+target_link_libraries(eda_waveform_tests PRIVATE eda_waveform GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_waveform_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_waveform_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_waveform_tests)

@@ -40,3 +40,6 @@ add_subdirectory(frontend/memory_demo)
 
 # Phase 8 (Concurrency) — new sibling directory, everything above is untouched.
 add_subdirectory(frontend/parallel_demo)
+
+# Phase 9 (Frontend, ImGui) — new sibling directory, everything above is untouched.
+add_subdirectory(frontend/imgui_demo)

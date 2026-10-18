@@ -31,8 +31,8 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
 | 6 | Templates | `LogicGate<T>` + `LogicValue` 0/1/X/Z (independent, like Phase 4) | class templates, C++20 concepts, requires-expressions, header-only-by-necessity | ✅ done |
 | 7 | Memory | `OwningPtr<T>`/`SharedOwningPtr<T>`/`FileHandle` (independent, like Phase 4/6) | RAII, rule of 5 (two idioms), reference counting, copy-and-swap, converting constructors | ✅ done |
 | 8 | Concurrency | `ParallelSimulator` (depends on `Component` + this phase's `ThreadPool`) | `std::thread`, mutex + condition_variable, atomics, hand-written thread pool, level-based scheduling | ✅ done |
-| 9 | Frontend | Dear ImGui schematic + waveform view | linking external libs, UI event loop, backend/frontend separation | ⏳ next |
-| 10 | Design patterns | Factory, Visitor, refined Observer | advanced OOP patterns, exception safety, const-correctness | planned |
+| 9 | Frontend | Dear ImGui schematic + waveform view (depends on Phase 3's `Netlist`) | immediate-mode GUI loop, `FetchContent`, CMake `INTERFACE` libraries, vendoring third-party source | ✅ done |
+| 10 | Design patterns | Factory, Visitor, refined Observer | advanced OOP patterns, exception safety, const-correctness | ⏳ next |
 | 11 | Testing | Expanded coverage, sanitizers, CI | ASan/UBSan, CI script (GoogleTest itself arrived early — see below) | planned |
 | 12 | Performance | Profiling & optimization | cache-friendly layout, benchmarking | planned |
 
@@ -53,7 +53,7 @@ row's "leaves open" is the next row's "fixes."
 | 6 | Templates ✅ | Signal value type becomes generic (`LogicGate<T>`) — richer states (0/1/X/Z via `LogicValue`) possible without rewriting the engine per type; only 3 operations (AND/OR/NOT) needed per new type, NAND/NOR/XOR derived generically. No bug found this time — first phase in a row where testing confirmed correctness without catching a defect. | Netlists/components are heap-allocated through the hierarchy with no rigorous ownership story — who deletes what, and when, isn't yet governed by explicit rules. |
 | 7 | Memory management ✅ | Smart pointers (hand-written `OwningPtr`/`SharedOwningPtr`) + rule-of-5 (two idioms) + move semantics make ownership explicit and leak-proof, formalizing what Phase 2's `unique_ptr` preview started informally. RAII's exception-safety guarantee demonstrated directly (a thrown exception, a file still correctly flushed/closed). | Simulating a large netlist is single-threaded — independent parts of the circuit evaluate serially even though nothing requires that. |
 | 8 | Concurrency ✅ | Independent dependency-levels of a circuit evaluate in parallel via a hand-written `ThreadPool` (mutex+condition_variable for the task queue, atomics for a lock-free counter). Demonstrated speedup (~9×, 8 threads) is honestly labeled artificial — this project's actual gates are far too cheap for threading overhead not to dominate; the mechanism is real, the magnitude is a stand-in for genuinely expensive gates. | Still console-only — no way to *see* the circuit or its signals, only printed truth tables/logs. |
-| 9 | Frontend (ImGui) | A real UI: schematic view + waveform viewer, wired to the backend built in phases 1-8. | The architecture (how gates/wires/the engine relate) has accreted informally across 8 phases — never named or cleaned up as patterns. |
+| 9 | Frontend (ImGui) ✅ | A real UI: schematic view (live checkboxes + colored wire values) + waveform viewer (`PlotLines`), wired to Phase 3's `Netlist`. First genuinely external dependencies (ImGui/GLFW/OpenGL); first phase whose main deliverable can't be verified by automated testing alone — a `--max-frames` smoke-test mode confirms it runs without crashing, but visual correctness needs a human to actually look. | The architecture (how gates/wires/the engine relate) has accreted informally across 9 phases — never named or cleaned up as patterns. |
 | 10 | Design patterns | Factory (component creation), Visitor (netlist traversal), refined Observer (signal propagation) — the informal structures from earlier phases get named, cleaned up, made reusable. | By now the codebase is large enough that manual spot-checking isn't sufficient assurance of correctness. |
 | 11 | Testing & tooling | Expanded test coverage across everything built so far, sanitizers (ASan/UBSan) for memory/UB bugs, CI scripting. (GoogleTest itself arrived early, in Phase 1 — this phase is about *scale* of coverage, not introducing the framework.) | Correctness is now trustworthy, but nothing has been measured for speed — premature optimization before this point would have been wasted effort on code that was still changing shape. |
 | 12 | Performance | Profile real bottlenecks, optimize data layout for cache-friendliness, benchmark before/after. Last, deliberately — only after correctness is established. | *(end of planned roadmap)* |
@@ -117,4 +117,8 @@ the plan.
   `ParallelSimulator` (depends on `ThreadPool` + `Component` — new
   capability on two existing pieces, not a Phase-4-style rematch of
   `Netlist`, since the optimization axis — parallelism vs.
-  incrementality — is genuinely different).
+  incrementality — is genuinely different). Phase 9 depends directly on
+  Phase 3's `Netlist` (new capability — a GUI — built on the existing
+  engine) and pulls in this project's first genuinely external
+  dependencies (Dear ImGui via `FetchContent`, GLFW via pacman, OpenGL
+  from the system).
