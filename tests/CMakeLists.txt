@@ -109,3 +109,23 @@ else()
 endif()
 
 gtest_discover_tests(eda_generic_tests)
+
+# --- Phase 7 (Memory management) — separate target, everything above untouched -
+# Tests OwningPtr<T>/SharedOwningPtr<T>/FileHandle (eda_memory), fully
+# independent — no dependency on eda_oop needed for these tests.
+
+add_executable(eda_memory_tests
+    test_owning_ptr.cpp
+    test_shared_owning_ptr.cpp
+    test_file_handle.cpp
+)
+
+target_link_libraries(eda_memory_tests PRIVATE eda_memory GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_memory_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_memory_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_memory_tests)

@@ -29,8 +29,8 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
 | 4 | Simulation engine | `EventSimulator` (parallel technique to `Netlist`, both depend on `Component`) | lambdas, `std::function`, `priority_queue`, Observer pattern, `unordered_set` dedup, delta-cycle batching | ✅ done |
 | 5 | File I/O | `NetlistLoader` (depends on Phase 3's `Netlist`) | `std::istream`/`ifstream`, `getline`/`istringstream` parsing, exceptions, string→factory `unordered_map` | ✅ done |
 | 6 | Templates | `LogicGate<T>` + `LogicValue` 0/1/X/Z (independent, like Phase 4) | class templates, C++20 concepts, requires-expressions, header-only-by-necessity | ✅ done |
-| 7 | Memory | Smart pointers, RAII, move semantics | `unique_ptr`/`shared_ptr`, rule of 5, move semantics | ⏳ next |
-| 8 | Concurrency | Multithreaded simulation | `std::thread`, mutex, atomics, thread pools | planned |
+| 7 | Memory | `OwningPtr<T>`/`SharedOwningPtr<T>`/`FileHandle` (independent, like Phase 4/6) | RAII, rule of 5 (two idioms), reference counting, copy-and-swap, converting constructors | ✅ done |
+| 8 | Concurrency | Multithreaded simulation | `std::thread`, mutex, atomics, thread pools | ⏳ next |
 | 9 | Frontend | Dear ImGui schematic + waveform view | linking external libs, UI event loop, backend/frontend separation | planned |
 | 10 | Design patterns | Factory, Visitor, refined Observer | advanced OOP patterns, exception safety, const-correctness | planned |
 | 11 | Testing | Expanded coverage, sanitizers, CI | ASan/UBSan, CI script (GoogleTest itself arrived early — see below) | planned |
@@ -51,7 +51,7 @@ row's "leaves open" is the next row's "fixes."
 | 4 | Simulation engine ✅ | An event-driven scheduler (`EventSimulator`): only re-evaluates components downstream of an actual signal change, via a time-ordered event queue with same-instant events batched together — fixes Phase 3's full-recompute limitation directly. (Required a real fix mid-phase: naive one-event-at-a-time processing had a genuine race when two inputs changed simultaneously — see `docs/phases/phase4.md`.) | Circuits are still hand-built in C++ code (`addComponent` calls) — no way to describe a circuit as data/load one from a file. |
 | 5 | File I/O ✅ | Netlists load from a text file (`NetlistLoader`) — describe a circuit as data, not code. Found a second real, toolchain-specific bug along the way (`ifstream::is_open()` vs `operator!`/`fail()` — see `docs/phases/phase5.md`). | Signals are hardcoded `bool` — no unknown/floating (`X`) or high-impedance (`Z`) states, no multi-bit buses. Already bit us in Phase 4 (a wire's "unset" state was indistinguishable from a genuinely-computed `false`). |
 | 6 | Templates ✅ | Signal value type becomes generic (`LogicGate<T>`) — richer states (0/1/X/Z via `LogicValue`) possible without rewriting the engine per type; only 3 operations (AND/OR/NOT) needed per new type, NAND/NOR/XOR derived generically. No bug found this time — first phase in a row where testing confirmed correctness without catching a defect. | Netlists/components are heap-allocated through the hierarchy with no rigorous ownership story — who deletes what, and when, isn't yet governed by explicit rules. |
-| 7 | Memory management | Smart pointers + rule-of-5 + move semantics make ownership explicit and leak-proof, formalizing what Phase 2's `unique_ptr` preview started informally. | Simulating a large netlist is single-threaded — independent parts of the circuit evaluate serially even though nothing requires that. |
+| 7 | Memory management ✅ | Smart pointers (hand-written `OwningPtr`/`SharedOwningPtr`) + rule-of-5 (two idioms) + move semantics make ownership explicit and leak-proof, formalizing what Phase 2's `unique_ptr` preview started informally. RAII's exception-safety guarantee demonstrated directly (a thrown exception, a file still correctly flushed/closed). | Simulating a large netlist is single-threaded — independent parts of the circuit evaluate serially even though nothing requires that. |
 | 8 | Concurrency | Independent subgraphs evaluate in parallel (thread pool, mutex/atomics for shared state) — real speedup on large circuits. | Still console-only — no way to *see* the circuit or its signals, only printed truth tables/logs. |
 | 9 | Frontend (ImGui) | A real UI: schematic view + waveform viewer, wired to the backend built in phases 1-8. | The architecture (how gates/wires/the engine relate) has accreted informally across 8 phases — never named or cleaned up as patterns. |
 | 10 | Design patterns | Factory (component creation), Visitor (netlist traversal), refined Observer (signal propagation) — the informal structures from earlier phases get named, cleaned up, made reusable. | By now the codebase is large enough that manual spot-checking isn't sufficient assurance of correctness. |
@@ -108,4 +108,8 @@ the plan.
   — parsing — built on an existing piece, not a comparison). Phase 6's
   `LogicGate<T>`/`LogicValue` are independent too, same reasoning as
   Phase 4 (solves the same AND/OR/NOT/... problem Phase 1/2 solved, just
-  generalized via templates — nothing to "build on").
+  generalized via templates — nothing to "build on"). Phase 7's
+  `OwningPtr`/`SharedOwningPtr`/`FileHandle` are independent for a third
+  reason: they're domain-agnostic infrastructure with nothing to depend
+  on at all (the frontend demo links `eda_oop` separately, just to have
+  something to own — doesn't make the library depend on it).

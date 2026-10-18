@@ -33,8 +33,12 @@ and a status snapshot, not the "why."
 - **Phase 6 — Templates** (new files; independent of `Component`/`Gate`,
   same reasoning as Phase 4 — generalizes the same gate behaviors via a
   C++20-concept-constrained template, `LogicGate<T>`): `docs/phases/phase6.md`.
+- **Phase 7 — Memory management** (new files; independent, generic
+  infrastructure — hand-written `OwningPtr<T>`/`SharedOwningPtr<T>`/
+  `FileHandle`, demonstrating RAII surviving a real thrown exception):
+  `docs/phases/phase7.md`.
 
-All six coexist in the same build.
+All seven coexist in the same build.
 
 ## Build, run, test
 
@@ -49,13 +53,14 @@ cmake --build build
 ./build/bin/eda_event_demo.exe       # Phase 4 frontend
 ./build/bin/eda_fileio_demo.exe      # Phase 5 frontend
 ./build/bin/eda_generic_demo.exe     # Phase 6 frontend
-cd build && ctest --output-on-failure   # all tests, all phases (38 total)
+./build/bin/eda_memory_demo.exe      # Phase 7 frontend
+cd build && ctest --output-on-failure   # all tests, all phases (55 total)
 ```
 
 Or open the folder in VS Code (CMake Tools + C/C++ extensions): build with
 `Ctrl+Shift+B`, debug with `F5` (`.vscode/tasks.json` / `launch.json`).
 
-See `docs/phases/phase1.md` through `phase6.md` for the full walkthrough
+See `docs/phases/phase1.md` through `phase7.md` for the full walkthrough
 (build details, VS Code steps, what each test checks and why,
 troubleshooting).
 
@@ -73,12 +78,16 @@ backend/
   include/eda/LogicGate.h       Phase 6 public API part 2 — header-only
                                   template, no corresponding .cpp (see
                                   docs/phases/phase6.md for why)
+  include/eda/OwningPtr.h       Phase 7 — header-only template (independent)
+  include/eda/SharedOwningPtr.h Phase 7 — header-only template (independent)
+  include/eda/FileHandle.h      Phase 7 — ordinary class (independent)
   src/Gate.cpp              -> eda_core (static library)
   src/Component.cpp         -> eda_oop (static library)
   src/Netlist.cpp           -> eda_netlist (static library, links eda_oop)
   src/EventSimulator.cpp    -> eda_event (static library, links eda_oop)
   src/NetlistLoader.cpp     -> eda_fileio (static library, links eda_netlist)
   src/LogicValue.cpp        -> eda_generic (static library)
+  src/FileHandle.cpp        -> eda_memory (static library)
 frontend/
   console/              Phase 1 UI — links eda_core only
   console_phase2/       Phase 2 UI — links eda_oop only
@@ -86,6 +95,8 @@ frontend/
   event_demo/           Phase 4 UI — links eda_event (transitively eda_oop)
   fileio_demo/           Phase 5 UI — links eda_fileio; circuits/*.nl data files
   generic_demo/          Phase 6 UI — links eda_generic
+  memory_demo/           Phase 7 UI — links eda_memory AND eda_oop (for Component
+                           to own; doesn't make eda_memory itself depend on it)
   (imgui/, qt/ later — same pattern: new sibling dir, link the backend lib)
 tests/
   test_gate.cpp             -> eda_tests (Phase 1, GoogleTest)
@@ -95,10 +106,14 @@ tests/
   test_netlist_loader.cpp       -> eda_fileio_tests (Phase 5, GoogleTest)
   test_logic_value.cpp,
   test_logic_gate.cpp            -> eda_generic_tests (Phase 6, GoogleTest)
+  test_owning_ptr.cpp,
+  test_shared_owning_ptr.cpp,
+  test_file_handle.cpp            -> eda_memory_tests (Phase 7, GoogleTest)
 docs/
+  PROJECT_IDEA.md       the vision/why, read this first
   ROADMAP.md            all 12 phases, concepts + status + why (causal chain)
   DECISIONS.md           dated log of choices + rationale
-  phases/phase1.md ... phase6.md  one doc per phase
+  phases/phase1.md ... phase7.md  one doc per phase
   notes/gtest.md, ...    cross-cutting reference notes (revision/interview prep)
 .vscode/              tasks.json (build), launch.json (gdb debug), settings.json
 build/                (gitignored) CMake build output -> build/bin/*.exe

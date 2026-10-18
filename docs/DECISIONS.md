@@ -371,3 +371,51 @@ return-type check matters, not just "is this expression well-formed."
 component, constrain it with a concept expressing the actual required
 operations, and verify the rejection path actually produces a useful
 diagnostic (don't just assume it does).
+
+---
+
+### 2026-10-18 — Phase 7 is independent, generic infrastructure
+
+**Decision:** `OwningPtr<T>`, `SharedOwningPtr<T>`, and `FileHandle`
+(Phase 7) have no dependency on `Component`/`Gate`/`Netlist`/etc. — new
+library `eda_memory`. The frontend demo additionally links `eda_oop` to
+have `Component` as something concrete to own, which does not make the
+library itself depend on it (same relationship any program using
+`std::unique_ptr<MyClass>` has to the standard library).
+
+**Why:** a smart pointer or RAII wrapper is domain-agnostic by nature —
+there's no "new EDA capability" being built here, just infrastructure
+that could own anything. Same category as Phase 4 and Phase 6:
+independent, not because of a same-problem comparison this time, but
+because there's nothing *to* depend on — the classes don't know or
+care what they point at.
+
+**How to apply:** future phases introducing generic infrastructure
+(a thread pool in Phase 8, say) should default to independent unless
+there's a concrete reason to couple it to a specific earlier phase's
+type.
+
+---
+
+### 2026-10-18 — `SharedOwningPtr` has no converting constructor (a deliberate, documented gap)
+
+**Decision:** `SharedOwningPtr<T>` does not support
+`SharedOwningPtr<Base> p = makeShared<Derived>();` the way `OwningPtr<T>`
+supports the equivalent for unique ownership. Kept simpler on purpose —
+a correct converting constructor for shared ownership needs to handle
+the control block correctly across the type change, which is more
+machinery than this project's teaching goal here justifies.
+
+**Hit directly, not just anticipated:** writing the Phase 7 demo with
+`SharedOwningPtr<Component> first = makeShared<OrGate>();` failed to
+compile with exactly the expected error (conversion from
+`SharedOwningPtr<OrGate>` to `SharedOwningPtr<Component>`). Fixed by
+constructing directly (`SharedOwningPtr<Component> first(new OrGate());`)
+with a comment explaining why, rather than quietly adding the missing
+feature to make the original line compile.
+
+**How to apply:** if a future phase genuinely needs
+`SharedOwningPtr<Base>` constructed from a `Derived` factory call,
+that's the point to actually add the converting constructor (mirroring
+`OwningPtr`'s), not before — avoid building capability ahead of a real
+need.

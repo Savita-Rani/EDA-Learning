@@ -112,3 +112,26 @@ if(MSVC)
 else()
     target_compile_options(eda_generic PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# --- Phase 7 (Memory management) — separate target, nothing above touched -
+# OwningPtr<T>/SharedOwningPtr<T> (header-only templates) and FileHandle
+# are NEW, INDEPENDENT, fully generic infrastructure — no dependency on
+# Component/Gate/Netlist/etc. Only FileHandle.cpp needs compiling; the
+# two smart-pointer templates are header-only by necessity (same reason
+# as Phase 6's LogicGate<T>). The frontend demo separately links eda_oop
+# too, to have a domain type (Component) to actually own — that does NOT
+# make this library itself depend on eda_oop. See docs/DECISIONS.md,
+# "Phase 7 is independent, generic infrastructure."
+
+add_library(eda_memory STATIC
+    src/FileHandle.cpp
+)
+
+target_include_directories(eda_memory PUBLIC include)
+target_compile_features(eda_memory PUBLIC cxx_std_20)
+
+if(MSVC)
+    target_compile_options(eda_memory PRIVATE /W4)
+else()
+    target_compile_options(eda_memory PRIVATE -Wall -Wextra -Wpedantic)
+endif()

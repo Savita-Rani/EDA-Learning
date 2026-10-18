@@ -34,3 +34,6 @@ add_subdirectory(frontend/fileio_demo)
 
 # Phase 6 (Templates) — new sibling directory, everything above is untouched.
 add_subdirectory(frontend/generic_demo)
+
+# Phase 7 (Memory management) — new sibling directory, everything above is untouched.
+add_subdirectory(frontend/memory_demo)

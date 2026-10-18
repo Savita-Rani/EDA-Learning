@@ -4,3 +4,8 @@ build/
 *.exe
 .cache/
 compile_commands.json
+
+# Runtime artifacts from running demos from the repo root (e.g.
+# frontend/memory_demo's trace log) — not build output, not test
+# output (tests clean up their own temp files), just incidental.
+*.log
