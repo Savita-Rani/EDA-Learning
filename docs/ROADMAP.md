@@ -1,0 +1,36 @@
+# Roadmap
+
+The project: a digital logic simulator (EDA tool). Backend and frontend both
+in C++, starting from fundamentals and ending at advanced/systems-level C++.
+
+Each phase = one working increment + new C++ concepts introduced in service
+of that increment. Status is kept in sync with the task list; this file is
+the durable record of *what each phase covers and why*.
+
+| # | Phase | Feature | New C++ concepts | Status |
+|---|-------|---------|-------------------|--------|
+| 0 | Scaffold | Project skeleton, CMake, git, docs | build systems, header/source split | ✅ done |
+| 1 | Basics | `Gate` class, truth tables (console) | classes, `enum class`, `switch`, `const` methods, `std::vector` | ✅ done |
+| 2 | OOP | Gate hierarchy, `Wire`/`Signal` | inheritance, virtual/override, abstract base classes, polymorphism | ⏳ next |
+| 3 | STL | Netlist as a graph | containers, iterators, algorithms, references vs pointers, topological sort | planned |
+| 4 | Simulation engine | Event-driven scheduler | lambdas, `std::function`, `priority_queue`, Observer pattern | planned |
+| 5 | File I/O | Netlist file format parser | streams, string parsing, exceptions | planned |
+| 6 | Templates | Generic signal values (0/1/X/Z) | templates, generic programming, (C++20 concepts) | planned |
+| 7 | Memory | Smart pointers, RAII, move semantics | `unique_ptr`/`shared_ptr`, rule of 5, move semantics | planned |
+| 8 | Concurrency | Multithreaded simulation | `std::thread`, mutex, atomics, thread pools | planned |
+| 9 | Frontend | Dear ImGui schematic + waveform view | linking external libs, UI event loop, backend/frontend separation | planned |
+| 10 | Design patterns | Factory, Visitor, refined Observer | advanced OOP patterns, exception safety, const-correctness | planned |
+| 11 | Testing | Unit tests, sanitizers | Catch2/GoogleTest, ASan/UBSan, CI script | planned |
+| 12 | Performance | Profiling & optimization | cache-friendly layout, benchmarking | planned |
+
+## Key decisions (see `docs/DECISIONS.md` for full rationale)
+
+- **EDA tool type:** digital logic simulator (not analog/SPICE, not a
+  schematic *editor* first) — best ratio of "teaches core C++ progressively"
+  to "visibly working demo early."
+- **Frontend:** console first, then **Dear ImGui** (not Qt, not web+C++) —
+  pure C++, light setup, good fit for schematic/waveform rendering later.
+- **Learning style:** guided, step-by-step — concepts explained as
+  introduced, small reviewable increments.
+- **Toolchain:** g++ 13.2.0 (MSYS2/MinGW) + CMake 4.0 + git 2.43, confirmed
+  present on this machine 2026-10-18. No MSVC (`cl`) installed.
