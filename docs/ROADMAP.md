@@ -2,6 +2,9 @@
 
 The project: a digital logic simulator (EDA tool). Backend and frontend both
 in C++, starting from fundamentals and ending at advanced/systems-level C++.
+For the *why* behind this shape (vision, domain vocabulary, the phase-
+isolation architecture rule), see `docs/PROJECT_IDEA.md` — this file is
+the phase-by-phase detail that backs it up.
 
 Each phase = one working increment + new C++ concepts introduced in service
 of that increment. Status is kept in sync with the task list; this file is

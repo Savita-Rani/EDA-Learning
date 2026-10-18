@@ -8,6 +8,13 @@ This repo doubles as a **course**: every phase introduces new C++ concepts
 in service of a real feature. See `docs/` for the full trail of decisions,
 roadmap, and what-we-learned notes per phase.
 
+**New here? Start with `docs/PROJECT_IDEA.md`** — the project's vision,
+domain vocabulary (gate/wire/netlist/signal/wiring), scope (logic
+simulation only, not physical layout or analog/SPICE), and the
+architecture rule (phase isolation + depend-vs-independent) that shapes
+every file in this repo. This file below is build/run/test instructions
+and a status snapshot, not the "why."
+
 ## Current status
 
 - **Phase 1 — Gate basics** (console only): `docs/phases/phase1.md`.
