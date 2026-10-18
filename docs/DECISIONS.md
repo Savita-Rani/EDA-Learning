@@ -419,3 +419,63 @@ feature to make the original line compile.
 that's the point to actually add the converting constructor (mirroring
 `OwningPtr`'s), not before — avoid building capability ahead of a real
 need.
+
+---
+
+### 2026-10-18 — ParallelSimulator depends on Component and ThreadPool; neither depends on Netlist
+
+**Decision:** Phase 8 splits into two libraries. `ThreadPool` is fully
+independent (no dependency on anything EDA-specific) — generic
+infrastructure, same category as Phase 7's memory classes.
+`ParallelSimulator` depends on BOTH `ThreadPool` (this same phase) and
+`eda_oop`'s `Component` (reused, like Phases 3/4/6). Neither depends on
+Phase 3's `Netlist`, even though `ParallelSimulator` and `Netlist` both
+ultimately answer "what is every wire's value."
+
+**Why this isn't a Phase-4-vs-Phase-3 situation:** Phase 4 was a
+parallel technique because it improved the SAME axis Phase 3 already
+addressed (how much work gets done — incremental vs. full recompute).
+Phase 8 improves a DIFFERENT axis entirely: given the same full amount
+of work `Netlist` would do, run the independent parts of it
+concurrently instead of serially. Comparable optimization *goal*
+(faster/less wasteful simulation), different optimization *axis*
+(throughput via parallelism, not reduced work via incrementality) — not
+a rematch of Phase 3 vs. 4, and not natural to build as an extension of
+either.
+
+**How to apply:** when a new phase's improvement is along a genuinely
+different axis than an existing alternative (even if the end goal
+sounds similar — "make simulation faster"), it's fine for it to be its
+own independent thing rather than forcing it to relate to either
+existing option as a dependency or a direct competitor.
+
+---
+
+### 2026-10-18 — ThreadPool's synchronization discipline: lock on both sides of every state change
+
+**Decision:** every mutation of `ThreadPool`'s `pendingTasks_` counter,
+and every `condition_variable::notify_*` call tied to it, happens while
+holding the same `mutex_` that `waitUntilIdle()` uses to check its
+predicate. Chosen deliberately over the (slightly faster) alternative
+of decrementing/notifying after releasing the lock.
+
+**Why:** decrementing and notifying without the lock creates a
+textbook "lost wakeup" race — a worker could finish, decrement the
+counter to zero, and call `notify_all()` in the narrow window between
+`waitUntilIdle()` checking the predicate (false) and actually starting
+to wait, permanently losing that one-shot notification and hanging
+forever. This wasn't observed as a bug (the current implementation was
+written correctly from the start), but reasoned through explicitly
+before writing the code, and the resulting discipline is documented
+directly in `ThreadPool.cpp`'s top comment so a future edit doesn't
+reintroduce it by "optimizing" the locking away.
+
+**Verified, not just reasoned about:** ran both Phase 8 test binaries
+20 consecutive times each specifically hunting for intermittent
+hangs/wrong counts (a subtly-wrong synchronization design often passes
+most runs and fails occasionally). Zero failures across 40 runs.
+
+**How to apply:** any future concurrency code in this project should
+default to "mutation + notification under the same lock" unless there's
+a measured, specific reason to split them — the lost-wakeup risk from
+splitting them is easy to introduce and easy to miss in a quick read.

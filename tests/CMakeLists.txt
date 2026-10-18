@@ -129,3 +129,35 @@ else()
 endif()
 
 gtest_discover_tests(eda_memory_tests)
+
+# --- Phase 8 (Concurrency) — separate targets, everything above untouched -
+# Tests ThreadPool (independent) and ParallelSimulator (depends on
+# ThreadPool + eda_oop's Component) separately.
+
+add_executable(eda_threadpool_tests
+    test_thread_pool.cpp
+)
+
+target_link_libraries(eda_threadpool_tests PRIVATE eda_threadpool GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_threadpool_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_threadpool_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_threadpool_tests)
+
+add_executable(eda_parallel_tests
+    test_parallel_simulator.cpp
+)
+
+target_link_libraries(eda_parallel_tests PRIVATE eda_parallel GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_parallel_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_parallel_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_parallel_tests)

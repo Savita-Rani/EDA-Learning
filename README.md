@@ -37,8 +37,12 @@ and a status snapshot, not the "why."
   infrastructure — hand-written `OwningPtr<T>`/`SharedOwningPtr<T>`/
   `FileHandle`, demonstrating RAII surviving a real thrown exception):
   `docs/phases/phase7.md`.
+- **Phase 8 — Concurrency** (new files; `ThreadPool` independent,
+  `ParallelSimulator` depends on it + `Component` — level-based parallel
+  evaluation, verified race-free across 20 repeated test runs, honest
+  artificial-workload speedup demo): `docs/phases/phase8.md`.
 
-All seven coexist in the same build.
+All eight coexist in the same build.
 
 ## Build, run, test
 
@@ -54,13 +58,14 @@ cmake --build build
 ./build/bin/eda_fileio_demo.exe      # Phase 5 frontend
 ./build/bin/eda_generic_demo.exe     # Phase 6 frontend
 ./build/bin/eda_memory_demo.exe      # Phase 7 frontend
-cd build && ctest --output-on-failure   # all tests, all phases (55 total)
+./build/bin/eda_parallel_demo.exe    # Phase 8 frontend
+cd build && ctest --output-on-failure   # all tests, all phases (66 total)
 ```
 
 Or open the folder in VS Code (CMake Tools + C/C++ extensions): build with
 `Ctrl+Shift+B`, debug with `F5` (`.vscode/tasks.json` / `launch.json`).
 
-See `docs/phases/phase1.md` through `phase7.md` for the full walkthrough
+See `docs/phases/phase1.md` through `phase8.md` for the full walkthrough
 (build details, VS Code steps, what each test checks and why,
 troubleshooting).
 
@@ -81,6 +86,8 @@ backend/
   include/eda/OwningPtr.h       Phase 7 — header-only template (independent)
   include/eda/SharedOwningPtr.h Phase 7 — header-only template (independent)
   include/eda/FileHandle.h      Phase 7 — ordinary class (independent)
+  include/eda/ThreadPool.h      Phase 8 — independent, generic infrastructure
+  include/eda/ParallelSimulator.h Phase 8 — depends on ThreadPool + Component
   src/Gate.cpp              -> eda_core (static library)
   src/Component.cpp         -> eda_oop (static library)
   src/Netlist.cpp           -> eda_netlist (static library, links eda_oop)
@@ -88,6 +95,9 @@ backend/
   src/NetlistLoader.cpp     -> eda_fileio (static library, links eda_netlist)
   src/LogicValue.cpp        -> eda_generic (static library)
   src/FileHandle.cpp        -> eda_memory (static library)
+  src/ThreadPool.cpp        -> eda_threadpool (static library)
+  src/ParallelSimulator.cpp -> eda_parallel (static library, links
+                                eda_oop + eda_threadpool)
 frontend/
   console/              Phase 1 UI — links eda_core only
   console_phase2/       Phase 2 UI — links eda_oop only
@@ -97,6 +107,7 @@ frontend/
   generic_demo/          Phase 6 UI — links eda_generic
   memory_demo/           Phase 7 UI — links eda_memory AND eda_oop (for Component
                            to own; doesn't make eda_memory itself depend on it)
+  parallel_demo/         Phase 8 UI — links eda_parallel
   (imgui/, qt/ later — same pattern: new sibling dir, link the backend lib)
 tests/
   test_gate.cpp             -> eda_tests (Phase 1, GoogleTest)
@@ -109,11 +120,13 @@ tests/
   test_owning_ptr.cpp,
   test_shared_owning_ptr.cpp,
   test_file_handle.cpp            -> eda_memory_tests (Phase 7, GoogleTest)
+  test_thread_pool.cpp              -> eda_threadpool_tests (Phase 8, GoogleTest)
+  test_parallel_simulator.cpp        -> eda_parallel_tests (Phase 8, GoogleTest)
 docs/
   PROJECT_IDEA.md       the vision/why, read this first
   ROADMAP.md            all 12 phases, concepts + status + why (causal chain)
   DECISIONS.md           dated log of choices + rationale
-  phases/phase1.md ... phase7.md  one doc per phase
+  phases/phase1.md ... phase8.md  one doc per phase
   notes/gtest.md, ...    cross-cutting reference notes (revision/interview prep)
 .vscode/              tasks.json (build), launch.json (gdb debug), settings.json
 build/                (gitignored) CMake build output -> build/bin/*.exe

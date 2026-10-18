@@ -135,3 +135,40 @@ if(MSVC)
 else()
     target_compile_options(eda_memory PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# --- Phase 8 (Concurrency) — separate targets, nothing above touched -----
+# ThreadPool is NEW, INDEPENDENT, fully generic infrastructure (no
+# dependency on Component/Gate/etc.), same category as Phase 7's memory
+# classes. ParallelSimulator DEPENDS ON both ThreadPool (this phase) and
+# eda_oop's Component (reused, like Phases 3/4/6) — new capability
+# (parallel evaluation) built on two existing pieces. See
+# docs/DECISIONS.md, "ParallelSimulator depends on Component and
+# ThreadPool."
+
+find_package(Threads REQUIRED)
+
+add_library(eda_threadpool STATIC
+    src/ThreadPool.cpp
+)
+
+target_include_directories(eda_threadpool PUBLIC include)
+target_link_libraries(eda_threadpool PUBLIC Threads::Threads)
+
+if(MSVC)
+    target_compile_options(eda_threadpool PRIVATE /W4)
+else()
+    target_compile_options(eda_threadpool PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_library(eda_parallel STATIC
+    src/ParallelSimulator.cpp
+)
+
+target_include_directories(eda_parallel PUBLIC include)
+target_link_libraries(eda_parallel PUBLIC eda_oop eda_threadpool)
+
+if(MSVC)
+    target_compile_options(eda_parallel PRIVATE /W4)
+else()
+    target_compile_options(eda_parallel PRIVATE -Wall -Wextra -Wpedantic)
+endif()
