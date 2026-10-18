@@ -142,3 +142,8 @@ connected by wires, using the same `Component` hierarchy introduced here
 storage, topological sort for evaluation order. This is the payoff
 `Component` was built for: Phase 1's `switch`-based `Gate` couldn't have
 supported a heterogeneous graph this cleanly.
+
+See `docs/ROADMAP.md` → "Why this order" for the full chain: this phase
+fixed Phase 1's "editing a switch to add a gate" problem; what this phase
+leaves open (components are connected to nothing — no circuit, no graph)
+is exactly what Phase 3 fixes next.

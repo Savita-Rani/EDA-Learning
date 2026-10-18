@@ -33,6 +33,37 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
 | 11 | Testing | Expanded coverage, sanitizers, CI | ASan/UBSan, CI script (GoogleTest itself arrived early — see below) | planned |
 | 12 | Performance | Profiling & optimization | cache-friendly layout, benchmarking | planned |
 
+## Why this order — the causal chain between phases
+
+Not an arbitrary syllabus. Every phase exists because the *previous*
+phase's design has exactly one limitation, and that phase's new C++
+feature is the standard tool for closing it. Read top to bottom: each
+row's "leaves open" is the next row's "fixes."
+
+| # | Phase | Fixes (limitation left by the previous phase) | Leaves open (motivates the next phase) |
+|---|---|---|---|
+| 1 | Basics | *(starting point — nothing to fix yet)* | A `switch` over gate types means every new gate requires editing existing functions (`evaluate()` *and* `name()`). Doesn't scale. |
+| 2 | OOP | New gate type = new class, zero edits elsewhere (polymorphism replaces the `switch`). | Gates are still isolated objects — nothing connects them into a circuit; no way to hold/iterate a *mix* of component types as a graph. |
+| 3 | STL | A netlist (graph of `Component`s + wires) can now be stored, iterated, and ordered via containers/topological sort. | Nothing *runs* the circuit automatically — you still manually call `evaluate()` in the order you compute. |
+| 4 | Simulation engine | An event-driven scheduler propagates signal changes automatically, in correct order, via a callback/event queue. | Circuits only exist if hand-built in C++ code — no way to describe a circuit as data. |
+| 5 | File I/O | Netlists load from a text file — describe a circuit as data, not code. | Signals are hardcoded `bool` — no unknown/floating (`X`) or high-impedance (`Z`) states, no multi-bit buses. |
+| 6 | Templates | Signal value type becomes generic — richer states possible without rewriting the engine per type. | Netlists/components are heap-allocated through the hierarchy with no rigorous ownership story — who deletes what, and when, isn't yet governed by explicit rules. |
+| 7 | Memory management | Smart pointers + rule-of-5 + move semantics make ownership explicit and leak-proof, formalizing what Phase 2's `unique_ptr` preview started informally. | Simulating a large netlist is single-threaded — independent parts of the circuit evaluate serially even though nothing requires that. |
+| 8 | Concurrency | Independent subgraphs evaluate in parallel (thread pool, mutex/atomics for shared state) — real speedup on large circuits. | Still console-only — no way to *see* the circuit or its signals, only printed truth tables/logs. |
+| 9 | Frontend (ImGui) | A real UI: schematic view + waveform viewer, wired to the backend built in phases 1-8. | The architecture (how gates/wires/the engine relate) has accreted informally across 8 phases — never named or cleaned up as patterns. |
+| 10 | Design patterns | Factory (component creation), Visitor (netlist traversal), refined Observer (signal propagation) — the informal structures from earlier phases get named, cleaned up, made reusable. | By now the codebase is large enough that manual spot-checking isn't sufficient assurance of correctness. |
+| 11 | Testing & tooling | Expanded test coverage across everything built so far, sanitizers (ASan/UBSan) for memory/UB bugs, CI scripting. (GoogleTest itself arrived early, in Phase 1 — this phase is about *scale* of coverage, not introducing the framework.) | Correctness is now trustworthy, but nothing has been measured for speed — premature optimization before this point would have been wasted effort on code that was still changing shape. |
+| 12 | Performance | Profile real bottlenecks, optimize data layout for cache-friendliness, benchmark before/after. Last, deliberately — only after correctness is established. | *(end of planned roadmap)* |
+
+**The thesis:** difficulty tracks necessity, not a fixed syllabus order —
+each phase is "advanced" relative to the last specifically because the
+simulator's own growing requirements demand it, not because harder topics
+were inserted for their own sake. When a phase completes, its row above
+gets updated with what was actually learned/fixed (see
+`docs/phases/phaseN.md` for the detailed account); the next row's "why" is
+rechecked against what actually got built, in case reality diverged from
+the plan.
+
 ## Key decisions (see `docs/DECISIONS.md` for full rationale)
 
 - **EDA tool type:** digital logic simulator (not analog/SPICE, not a

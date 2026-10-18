@@ -223,3 +223,9 @@ base class and virtual `evaluate()`, one derived class per gate type.
 forward unchanged — they'll validate the polymorphic version against the
 exact same truth tables, which is the point: behavior shouldn't change,
 only how it's implemented.
+
+See `docs/ROADMAP.md` → "Why this order" for the fuller causal chain: this
+phase's actual limitation (new gate type means editing the `switch` in two
+places) is specifically what Phase 2 fixes, and what Phase 2 leaves open
+is specifically what Phase 3 fixes after it — the pattern continues
+through all 12 phases.
