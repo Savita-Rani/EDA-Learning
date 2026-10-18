@@ -51,3 +51,23 @@ if(MSVC)
 else()
     target_compile_options(eda_netlist PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# --- Phase 4 (Event-driven engine) — separate target, nothing above touched -
+# EventSimulator (eda/EventSimulator.h) depends on eda_oop's Component
+# (reused, like Phase 3), but is INDEPENDENT of eda_netlist — it's a
+# second, parallel technique for the same problem Netlist solves, not an
+# extension of it. See docs/DECISIONS.md, "Phase 4 is a parallel
+# technique, not a Netlist extension."
+
+add_library(eda_event STATIC
+    src/EventSimulator.cpp
+)
+
+target_include_directories(eda_event PUBLIC include)
+target_link_libraries(eda_event PUBLIC eda_oop)
+
+if(MSVC)
+    target_compile_options(eda_event PRIVATE /W4)
+else()
+    target_compile_options(eda_event PRIVATE -Wall -Wextra -Wpedantic)
+endif()

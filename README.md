@@ -16,8 +16,12 @@ roadmap, and what-we-learned notes per phase.
 - **Phase 3 — Netlist (STL)** (new files; *depends on* Phase 2's
   `Component` — see `docs/phases/phase3.md` for why that's reuse, not an
   edit): `docs/phases/phase3.md`.
+- **Phase 4 — Event-driven engine** (new files; depends on `Component`,
+  deliberately independent of Phase 3's `Netlist` — a parallel technique
+  for the same problem, found and fixed a real race-condition bug along
+  the way): `docs/phases/phase4.md`.
 
-All three coexist in the same build.
+All four coexist in the same build.
 
 ## Build, run, test
 
@@ -29,39 +33,45 @@ cmake --build build
 ./build/bin/eda_console.exe          # Phase 1 frontend
 ./build/bin/eda_console_phase2.exe   # Phase 2 frontend
 ./build/bin/eda_netlist_demo.exe     # Phase 3 frontend
-cd build && ctest --output-on-failure   # all tests, all phases (17 total)
+./build/bin/eda_event_demo.exe       # Phase 4 frontend
+cd build && ctest --output-on-failure   # all tests, all phases (21 total)
 ```
 
 Or open the folder in VS Code (CMake Tools + C/C++ extensions): build with
 `Ctrl+Shift+B`, debug with `F5` (`.vscode/tasks.json` / `launch.json`).
 
-See `docs/phases/phase1.md` / `phase2.md` / `phase3.md` for the full
-walkthrough (build details, VS Code steps, what each test checks and why,
-troubleshooting).
+See `docs/phases/phase1.md` / `phase2.md` / `phase3.md` / `phase4.md` for
+the full walkthrough (build details, VS Code steps, what each test checks
+and why, troubleshooting).
 
 ## Project layout
 
 ```
 backend/
-  include/eda/Gate.h       Phase 1 public API, namespace eda::
-  include/eda/Component.h  Phase 2 public API (separate hierarchy)
-  include/eda/Netlist.h    Phase 3 public API (depends on Component)
+  include/eda/Gate.h            Phase 1 public API, namespace eda::
+  include/eda/Component.h       Phase 2 public API (separate hierarchy)
+  include/eda/Netlist.h         Phase 3 public API (depends on Component)
+  include/eda/EventSimulator.h  Phase 4 public API (depends on Component,
+                                  independent of Netlist — parallel technique)
   src/Gate.cpp              -> eda_core (static library)
   src/Component.cpp         -> eda_oop (static library)
   src/Netlist.cpp           -> eda_netlist (static library, links eda_oop)
+  src/EventSimulator.cpp    -> eda_event (static library, links eda_oop)
 frontend/
   console/              Phase 1 UI — links eda_core only
   console_phase2/       Phase 2 UI — links eda_oop only
   netlist_demo/         Phase 3 UI — links eda_netlist (transitively eda_oop)
+  event_demo/           Phase 4 UI — links eda_event (transitively eda_oop)
   (imgui/, qt/ later — same pattern: new sibling dir, link the backend lib)
 tests/
-  test_gate.cpp          -> eda_tests (Phase 1, GoogleTest)
-  test_component.cpp      -> eda_component_tests (Phase 2, GoogleTest)
-  test_netlist.cpp         -> eda_netlist_tests (Phase 3, GoogleTest)
+  test_gate.cpp             -> eda_tests (Phase 1, GoogleTest)
+  test_component.cpp         -> eda_component_tests (Phase 2, GoogleTest)
+  test_netlist.cpp            -> eda_netlist_tests (Phase 3, GoogleTest)
+  test_event_simulator.cpp     -> eda_event_tests (Phase 4, GoogleTest)
 docs/
   ROADMAP.md            all 12 phases, concepts + status + why (causal chain)
   DECISIONS.md           dated log of choices + rationale
-  phases/phase1.md, phase2.md, phase3.md, ...  one doc per phase
+  phases/phase1.md, phase2.md, phase3.md, phase4.md, ...  one doc per phase
   notes/gtest.md, ...    cross-cutting reference notes (revision/interview prep)
 .vscode/              tasks.json (build), launch.json (gdb debug), settings.json
 build/                (gitignored) CMake build output -> build/bin/*.exe

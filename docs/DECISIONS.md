@@ -222,3 +222,48 @@ edit," not "never depend on." If it's ambiguous which situation a new
 phase is in, check whether the *previous* phase's own "Next up" section
 already called for this dependency (it did, here) — if not, ask before
 assuming reuse is intended over reimplementation.
+
+---
+
+### 2026-10-18 — Phase 4 is a parallel technique, not a Netlist extension
+
+**Decision:** `EventSimulator` (Phase 4) depends on Phase 2's
+`Component` (reused, same pattern as Phase 3) but is deliberately
+**independent of** Phase 3's `Netlist` — a new `eda_event` library, not
+an extension of `eda_netlist`. Both solve the identical problem
+(propagate values correctly through wired-up `Component`s); they do it
+with different techniques (full topological recompute vs. event-driven
+incremental re-evaluation), and both remain runnable side by side.
+
+**Why this is the Phase-2-to-Phase-1 pattern, not the Phase-3-to-Phase-2
+pattern:** Phase 3 built genuinely *new* capability (a graph/netlist)
+*using* `Component` — reuse was correct because nothing comparable to
+`Netlist` existed yet to compare against. Phase 4 is different: Phase 3's
+`Netlist::simulate()` and Phase 4's `EventSimulator::run()` both answer
+the same question ("what are all the wire values after this input
+change") — exactly the kind of same-behavior-different-technique
+situation Phase 2 vs. Phase 1 established the precedent for. Extending
+`Netlist` in place to add event-driven behavior would have erased the
+"before" to compare against, the same way editing `Gate` instead of
+writing `Component` would have in Phase 2.
+
+**How to apply:** when a new phase's job is "solve the same problem a
+previous phase solved, differently," treat it like Phase 2 (new,
+independent implementation) even if it reuses a *lower-level* building
+block (here, `Component`) that both techniques legitimately share. When
+a new phase's job is "build something that didn't exist before, using an
+existing piece," treat it like Phase 3 (depend on it directly). The
+building block being shared (`Component`) is not itself what's being
+compared; the comparison is at the level of `Netlist` vs
+`EventSimulator`.
+
+**Also recorded here — the real bug this phase found:** the first
+version of `EventSimulator::run()` processed one event at a time instead
+of batching same-instant events, producing a genuine race condition (two
+simultaneous input changes to the same gate could be applied out of
+order, with the wrong one winning). Caught by `tests/test_event_simulator.cpp`
+on first run — not a planted bug. Fixed with "delta cycle" batching (see
+`docs/phases/phase4.md`, "A real bug, found by testing" for the full
+account). Noted here as a reminder that this project's testing habit
+(verify by demonstration) catches more than contrived regressions when
+the code under test is genuinely new.

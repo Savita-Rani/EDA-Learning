@@ -25,3 +25,6 @@ add_subdirectory(frontend/console_phase2)
 
 # Phase 3 (STL) — new sibling directory, everything above is untouched.
 add_subdirectory(frontend/netlist_demo)
+
+# Phase 4 (Event-driven engine) — new sibling directory, everything above is untouched.
+add_subdirectory(frontend/event_demo)

@@ -56,3 +56,20 @@ else()
 endif()
 
 gtest_discover_tests(eda_netlist_tests)
+
+# --- Phase 4 (Event-driven engine) — separate target, everything above untouched -
+# Tests EventSimulator (eda_event), independent of eda_netlist.
+
+add_executable(eda_event_tests
+    test_event_simulator.cpp
+)
+
+target_link_libraries(eda_event_tests PRIVATE eda_event GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_event_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_event_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_event_tests)
