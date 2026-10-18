@@ -18,7 +18,16 @@
 //                             lives in Gate.cpp. This split lets other files
 //                             #include this header without recompiling the
 //                             implementation every time it changes.
+//  - namespace eda          : this header lives under backend/include/eda/,
+//                             and everything in it is wrapped in `namespace
+//                             eda`. This IS the backend's public API surface —
+//                             any frontend (console today, ImGui later, Qt if
+//                             we ever port) includes <eda/Gate.h> and talks
+//                             only through `eda::` symbols. The backend never
+//                             includes or knows about any frontend.
 // ============================================================================
+
+namespace eda {
 
 enum class GateType {
     AND,
@@ -46,3 +55,5 @@ public:
 private:
     GateType type_;   // trailing underscore: our convention for member data
 };
+
+} // namespace eda

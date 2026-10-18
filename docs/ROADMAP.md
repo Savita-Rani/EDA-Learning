@@ -30,7 +30,15 @@ the durable record of *what each phase covers and why*.
   to "visibly working demo early."
 - **Frontend:** console first, then **Dear ImGui** (not Qt, not web+C++) —
   pure C++, light setup, good fit for schematic/waveform rendering later.
+  Kept portable to Qt later via the backend/frontend split below.
 - **Learning style:** guided, step-by-step — concepts explained as
   introduced, small reviewable increments.
 - **Toolchain:** g++ 13.2.0 (MSYS2/MinGW) + CMake 4.0 + git 2.43, confirmed
   present on this machine 2026-10-18. No MSVC (`cl`) installed.
+- **IDE:** VS Code (C/C++ + CMake Tools extensions), not Qt Creator or
+  Visual Studio — matches the existing MinGW/CMake toolchain.
+- **Architecture:** `backend/` (static lib `eda_core`, namespace `eda::`)
+  is fully independent of `frontend/`. Every frontend (console today,
+  ImGui in Phase 9, Qt if ported later) is a sibling directory under
+  `frontend/` that only includes `backend/include/eda/*.h` and links
+  `eda_core` — enforced by the CMake dependency graph, not convention.

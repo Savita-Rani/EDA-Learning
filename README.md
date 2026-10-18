@@ -19,17 +19,31 @@ Requires: g++ (MinGW/MSYS2 — confirmed g++ 13.2.0), CMake >= 3.15.
 ```powershell
 cmake -S . -B build -G "MinGW Makefiles"
 cmake --build build
-./build/eda_sim.exe
+./build/bin/eda_console.exe
 ```
+
+Or open the folder in VS Code (CMake Tools + C/C++ extensions) and use the
+provided `.vscode/tasks.json` (build) and `.vscode/launch.json` (debug).
 
 ## Project layout
 
 ```
-include/   public headers (the "what")
-src/       implementation + main() (the "how")
-docs/      roadmap, decisions, per-phase concept notes
-build/     (gitignored) CMake build output
+backend/              eda_core — the simulation engine (static library)
+  include/eda/          public API, namespace eda:: (#include <eda/Gate.h>)
+  src/                   implementation
+frontend/
+  console/              current UI — links against eda_core only
+  (imgui/, qt/ later — same pattern: new sibling dir, link eda_core)
+docs/                 roadmap, decisions, per-phase concept notes
+.vscode/              tasks.json (build), launch.json (gdb debug), settings.json
+build/                (gitignored) CMake build output -> build/bin/*.exe
 ```
+
+**Backend/frontend separation is deliberate and enforced by the build, not
+just convention:** `backend/` never includes anything from `frontend/`.
+Any frontend only ever depends on `eda_core`'s public headers under
+`backend/include/eda/`. See `docs/DECISIONS.md` (2026-10-18, "Backend/
+frontend separation") for why, and the ImGui→Qt porting note.
 
 ## Roadmap
 

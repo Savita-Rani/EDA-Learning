@@ -5,15 +5,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(eda_sim
-    src/main.cpp
-    src/Gate.cpp
-)
+# All executables land in build/bin/, regardless of which frontend
+# subdirectory produced them — keeps launch.json / running binaries simple.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-target_include_directories(eda_sim PRIVATE include)
-
-if(MSVC)
-    target_compile_options(eda_sim PRIVATE /W4)
-else()
-    target_compile_options(eda_sim PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+# backend/        -> eda_core: the simulation engine, zero UI knowledge.
+# frontend/console -> today's UI. frontend/imgui, frontend/qt can be added
+#                      later as siblings; neither backend/ nor this file's
+#                      structure needs to change when that happens.
+add_subdirectory(backend)
+add_subdirectory(frontend/console)

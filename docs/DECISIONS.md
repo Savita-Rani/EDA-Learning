@@ -59,3 +59,47 @@ No MSVC (`cl.exe`)/Visual Studio detected.
 `g++`. C++ standard: C++20 (set in `CMakeLists.txt`) to have modern features
 (concepts, ranges) available for later phases without needing to upgrade
 mid-project.
+
+---
+
+### 2026-10-18 — IDE: VS Code (not Qt Creator, not Visual Studio)
+
+**Options considered:** Qt Creator, VS Code, Visual Studio.
+
+**Decision:** VS Code, with C/C++ and CMake Tools extensions.
+
+**Why:** Qt Creator only pays off if the UI framework is Qt — we chose
+ImGui instead (see frontend decision above), so Qt Creator buys nothing
+over VS Code for a plain CMake + g++ project. Visual Studio steers toward
+the MSVC toolchain, which isn't installed (only MinGW g++ is) — using it
+would mean installing a large additional toolchain or fighting VS into
+using MinGW. VS Code uses the existing g++/CMake/git setup with no changes.
+
+---
+
+### 2026-10-18 — Backend/frontend separation: `eda_core` static library
+
+**Decision:** Split the project into `backend/` (built as a static library,
+`eda_core`, namespace `eda::`) and `frontend/<name>/` (one directory per UI,
+each linking against `eda_core` and including only its public headers under
+`backend/include/eda/`). Today there's one frontend, `frontend/console`.
+
+**Why:** User wants backend and frontend kept separate, with the explicit
+intent to **port the frontend to Qt later** if needed, without reworking
+the simulation engine. Making this a build-level boundary (not just a
+folder naming convention) means:
+- `backend/` can never accidentally `#include` something from `frontend/` —
+  CMake's `add_subdirectory`/`target_link_libraries` graph only allows the
+  dependency to run one way.
+- Adding a Qt (or ImGui, Phase 9) frontend later is purely additive: a new
+  `frontend/qt/` directory + a `CMakeLists.txt` that links `eda_core`. No
+  changes to `backend/` are needed, by construction.
+- The public API is explicit: anything frontends are allowed to touch lives
+  under `backend/include/eda/` and is wrapped in `namespace eda`; anything
+  under `backend/src/` is private implementation.
+
+**How to apply:** every future phase's backend work (Phases 2-8: OOP
+hierarchy, netlist, simulation engine, parsing, templates, memory,
+concurrency) goes under `backend/`. UI-only work (Phase 9 ImGui, a possible
+future Qt port) goes under a new `frontend/<name>/` sibling — never inside
+`backend/`, and never with `backend/` including frontend headers.

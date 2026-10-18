@@ -1,10 +1,17 @@
-#include "Gate.h"
+#include "eda/Gate.h"
 
 // ============================================================================
 // Gate.cpp — implementation (the "how") for the Gate class declared in
 // Gate.h (the "what"). The compiler turns this file into Gate.o/Gate.obj
 // independently of main.cpp; the linker then stitches the pieces together.
+//
+// This file (and the rest of backend/) never includes anything from
+// frontend/ — the dependency only goes one way: frontends depend on the
+// backend, never the reverse. That's what makes swapping console -> ImGui
+// -> Qt later a frontend-only change.
 // ============================================================================
+
+namespace eda {
 
 Gate::Gate(GateType type) : type_(type) {
     // Member initializer list `: type_(type)` runs BEFORE the constructor
@@ -37,3 +44,5 @@ const char* Gate::name() const {
     }
     return "UNKNOWN";
 }
+
+} // namespace eda

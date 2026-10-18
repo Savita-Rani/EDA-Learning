@@ -2,5 +2,5 @@ build/
 *.o
 *.obj
 *.exe
-.vscode/
 .cache/
+compile_commands.json

@@ -6,9 +6,17 @@ anchor the first batch of fundamentals in real, runnable code.
 
 ## Files
 
-- `include/Gate.h` — declares `GateType` (`enum class`) and `Gate` (class).
-- `src/Gate.cpp` — implements `Gate`'s constructor and `evaluate()`/`name()`.
-- `src/main.cpp` — builds one `Gate` per type, prints each truth table.
+- `backend/include/eda/Gate.h` — declares `GateType` (`enum class`) and
+  `Gate` (class), inside `namespace eda`. This is the backend's public API.
+- `backend/src/Gate.cpp` — implements `Gate`'s constructor and
+  `evaluate()`/`name()`.
+- `frontend/console/main.cpp` — builds one `Gate` per type, prints each
+  truth table. Links against `eda_core`; includes only `<eda/Gate.h>`.
+
+(Originally these lived under flat `include/`/`src/`; restructured into
+`backend/`/`frontend/console/` immediately after — see `docs/DECISIONS.md`,
+"Backend/frontend separation" — to make the separation a build-level
+guarantee instead of a convention, in time for a later Qt port if wanted.)
 
 ## Concepts covered
 
@@ -25,6 +33,8 @@ anchor the first batch of fundamentals in real, runnable code.
 | `std::vector<T>` | `main.cpp` | Dynamically-sized container holding one `Gate` per type. |
 | Range-based `for` | `main.cpp` | `for (const auto& gate : gates)` — no manual indexing, `const auto&` avoids copying each `Gate`. |
 | `std::cout` streams | `main.cpp` | `<<` insertion operator; note `bool` prints as `1`/`0` by default. |
+| `namespace eda` | `Gate.h`, `Gate.cpp` | Everything the backend exposes lives in `eda::`. It's the literal boundary a frontend talks across — added when we split into `backend/`/`frontend/` so the public API is explicit, not just "whatever's in the header." |
+| `using namespace eda;` | `main.cpp` | Pulls `eda::` names into scope for this one file. Fine in a small `.cpp`; never do this in a header — it would leak into every file that includes it. |
 
 ## What to notice when you run it
 
