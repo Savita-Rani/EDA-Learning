@@ -25,7 +25,7 @@ this" questions; this file is for the cross-phase overview.
 | 8 | Concurrency | Multithreaded simulation | `std::thread`, mutex, atomics, thread pools | planned |
 | 9 | Frontend | Dear ImGui schematic + waveform view | linking external libs, UI event loop, backend/frontend separation | planned |
 | 10 | Design patterns | Factory, Visitor, refined Observer | advanced OOP patterns, exception safety, const-correctness | planned |
-| 11 | Testing | Unit tests, sanitizers | Catch2/GoogleTest, ASan/UBSan, CI script | planned |
+| 11 | Testing | Expanded coverage, sanitizers, CI | ASan/UBSan, CI script (GoogleTest itself arrived early — see below) | planned |
 | 12 | Performance | Profiling & optimization | cache-friendly layout, benchmarking | planned |
 
 ## Key decisions (see `docs/DECISIONS.md` for full rationale)
@@ -47,3 +47,8 @@ this" questions; this file is for the cross-phase overview.
   ImGui in Phase 9, Qt if ported later) is a sibling directory under
   `frontend/` that only includes `backend/include/eda/*.h` and links
   `eda_core` — enforced by the CMake dependency graph, not convention.
+- **Testing:** GoogleTest was brought forward from Phase 11 into Phase 1
+  (`mingw-w64-ucrt-x86_64-gtest` via pacman, `gtest_discover_tests` in
+  `tests/CMakeLists.txt`) — real framework from day one instead of a
+  throwaway hand-rolled harness. Phase 11 is now about expanding coverage,
+  sanitizers, and CI, not introducing the framework.

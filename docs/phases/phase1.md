@@ -4,7 +4,8 @@
 from the console. No inheritance yet, no file I/O, no UI — just enough to
 anchor the first batch of fundamentals in real, runnable code.
 
-**Status:** done. Builds clean, console output verified, smoke test green.
+**Status:** done. Builds clean, console output verified, GoogleTest suite
+green (6/6).
 
 ## Files
 
@@ -14,8 +15,9 @@ anchor the first batch of fundamentals in real, runnable code.
   `evaluate()`/`name()`.
 - `frontend/console/main.cpp` — builds one `Gate` per type, prints each
   truth table. Links against `eda_core`; includes only `<eda/Gate.h>`.
-- `tests/test_gate.cpp` — smoke test for every gate's truth table, wired
-  into CTest. Links against `eda_core`, nothing else.
+- `tests/test_gate.cpp` — GoogleTest `TEST()` cases for every gate's truth
+  table, discovered individually by CTest. Links against `eda_core` and
+  `GTest::gtest_main`, nothing else.
 
 (Originally `Gate.h`/`Gate.cpp`/`main.cpp` lived under flat `include/`/
 `src/`; restructured into `backend/`/`frontend/console/` immediately after
@@ -66,50 +68,86 @@ step through it.
 
 ## How to test
 
+Phase 1 uses **GoogleTest** (`mingw-w64-ucrt-x86_64-gtest`, installed via
+MSYS2's `pacman`, matching our ucrt64 g++ toolchain). Originally planned
+for Phase 11, pulled forward since "how do I test this" deserves a real
+framework answer from the start.
+
 ```powershell
 cmake --build build --target eda_tests
 cd build
 ctest --output-on-failure
 ```
 
-or run the test binary directly for more detail:
+`gtest_discover_tests` (in `tests/CMakeLists.txt`) registers each `TEST()`
+as its own CTest entry, so you'll see:
+
+```
+Start 1: GateTest.AND
+1/6 Test #1: GateTest.AND .....................   Passed
+Start 2: GateTest.OR
+2/6 Test #2: GateTest.OR ......................   Passed
+...
+100% tests passed, 0 tests failed out of 6
+```
+
+Run the test binary directly for GoogleTest's own (more detailed) output:
 
 ```powershell
 ./build/bin/eda_tests.exe
 ```
 
-Expect:
+```
+[==========] Running 6 tests from 1 test suite.
+[ RUN      ] GateTest.AND
+[       OK ] GateTest.AND (0 ms)
+...
+[  PASSED  ] 6 tests.
+```
+
+**What each test actually checks:** for every `GateType`, `expected()` in
+`test_gate.cpp` independently recomputes the truth table (written
+differently from `Gate.cpp` — e.g. XOR is `(a||b) && !(a&&b)` in the test
+vs. `a != b` in the implementation — so a copy-paste bug can't hide from
+it), compares against `Gate::evaluate()`'s real output via `EXPECT_EQ`,
+and checks `Gate::name()` via `EXPECT_STREQ` (not `EXPECT_EQ` — that would
+compare `const char*` pointers, not string contents).
+
+**Confirmed the suite actually catches bugs, not just passes trivially:**
+temporarily broke `NAND` (`!(a && b)` → `(a && b)`), ran the tests, got a
+precise failure —
 
 ```
-30/30 checks passed
+Expected equality of these values:
+  gate.evaluate(a, b)
+    Which is: true
+  expected(type, a, b)
+    Which is: false
+NAND(true, true)
+[  FAILED  ] GateTest.NAND (7 ms)
+[  PASSED  ] 5 tests.
 ```
 
-(6 gates × (1 name check + 4 input combinations) = 30.) Exit code `0` on
-success, `1` if any check fails, with `FAIL: <description>` lines printed
-for each failing check on stderr.
-
-**What this test actually checks:** for every `GateType`, it independently
-recomputes the expected truth table (written differently from
-`Gate.cpp` — e.g. XOR is computed as `(a||b) && !(a&&b)` in the test vs.
-`a != b` in the implementation — so a copy-paste bug can't hide from it)
-and compares against `Gate::evaluate()`'s real output, plus checks
-`Gate::name()` returns the right string.
-
-**Why this isn't Catch2/GoogleTest yet:** that's deliberately deferred to
-Phase 11 ("Testing & tooling"), once there's enough backend surface area
-to justify pulling in a framework. For now, plain asserts + `add_test()` in
-`tests/CMakeLists.txt` get you a real, CI-friendly `ctest` pass/fail with
-zero dependencies — and this harness carries forward unchanged when Phase
-11 swaps in a framework (same CTest entry point, more tests added beside
-it).
-
-**Confirmed the harness actually catches bugs, not just passes
-trivially:** during setup, `AND`'s implementation was temporarily broken
-(`a && b` → `a || b`); the test caught it immediately (`28/30 checks
-passed`, 2 explicit `FAIL:` lines), then passed again after reverting.
+— reverted, confirmed 6/6 green again.
 
 ## Troubleshooting
 
+- **`find_package(GTest CONFIG REQUIRED)` fails ("Could not find a package
+  configuration file")** — GoogleTest isn't installed for this toolchain.
+  Install the ucrt64 package (matches our `C:/msys64/ucrt64/bin/c++.exe`):
+  ```powershell
+  C:\msys64\usr\bin\pacman.exe -S mingw-w64-ucrt-x86_64-gtest
+  ```
+  If `pacman` itself reports mirror errors (stale mirror DB is common on
+  Windows MSYS2 installs) but still finishes with "installing
+  mingw-w64-ucrt-x86_64-gtest..." at the end, it succeeded — one mirror
+  came through despite the noise. Confirm with:
+  `C:\msys64\usr\bin\pacman.exe -Qs gtest`.
+- **`ctest` runs 0 tests after adding a new `TEST()`** — `gtest_discover_tests`
+  runs `eda_tests.exe --gtest_list_tests` as part of the build, so you need
+  `cmake --build build` to finish successfully first; a stale discovery
+  cache from before the new TEST() existed can also linger — reconfigure
+  (`cmake -S . -B build ...`) if a rebuild alone doesn't pick it up.
 - **"CXX compiler identification" fails / wrong compiler picked** — make
   sure `g++` from MSYS2/MinGW is on `PATH` (`g++ --version` should print
   `13.2.0` or similar). If CMake finds a different compiler than expected,
@@ -153,8 +191,12 @@ passed`, 2 explicit `FAIL:` lines), then passed again after reverting.
 | `std::cout` streams | `main.cpp` | `<<` insertion operator; note `bool` prints as `1`/`0` by default. |
 | `namespace eda` | `Gate.h`, `Gate.cpp` | Everything the backend exposes lives in `eda::`. It's the literal boundary a frontend talks across — added when we split into `backend/`/`frontend/` so the public API is explicit, not just "whatever's in the header." |
 | `using namespace eda;` | `main.cpp` | Pulls `eda::` names into scope for this one file. Fine in a small `.cpp`; never do this in a header — it would leak into every file that includes it. |
-| Anonymous `namespace {}` | `test_gate.cpp` | Gives `expected()`, `check()`, `checkCount`/`failCount`, and `testGate()` internal linkage — each is private to this translation unit, won't collide with same-named symbols elsewhere if the test file grows. |
-| `CTest` (`enable_testing()` / `add_test()`) | top-level `CMakeLists.txt`, `tests/CMakeLists.txt` | Registers `eda_tests` as a named test (`GateTruthTables`) runnable via plain `ctest` — the same mechanism Phase 11's real framework will plug into. |
+| Anonymous `namespace {}` | `test_gate.cpp` | Gives `expected()` and `expectTruthTable()` internal linkage — private to this translation unit, won't collide with same-named symbols elsewhere if the test file grows. |
+| `CTest` (`enable_testing()`) | top-level `CMakeLists.txt` | Turns on CMake's test runner; `tests/CMakeLists.txt` then registers tests into it. |
+| GoogleTest `TEST(Suite, Name)` | `test_gate.cpp` | Macro that defines and auto-registers a test case — no manual "list of tests to run" needed, unlike the Phase-1-original hand-rolled harness. |
+| `EXPECT_EQ` vs `ASSERT_EQ` | `test_gate.cpp` | `EXPECT_*` records a failure and keeps running the rest of the test (so all 4 input combinations get checked even if one fails); `ASSERT_*` would bail out of the test immediately on the first failure. |
+| `EXPECT_STREQ` | `test_gate.cpp` | For `const char*`, `EXPECT_EQ` would compare pointer addresses, not contents — `EXPECT_STREQ` compares the actual characters. A classic C-string gotcha. |
+| `gtest_discover_tests` | `tests/CMakeLists.txt` | CMake module (`include(GoogleTest)`) that runs the test binary with `--gtest_list_tests` at build time and registers each `TEST()` as its own CTest entry, instead of one lump `add_test()`. |
 
 ## What to notice when you run it
 

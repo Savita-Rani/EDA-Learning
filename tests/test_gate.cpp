@@ -1,21 +1,43 @@
-#include <cstdio>
-#include <cstdlib>
-#include <string>
+#include <gtest/gtest.h>
 #include <eda/Gate.h>
 
 // ============================================================================
-// test_gate.cpp — Phase 1 smoke test.
+// test_gate.cpp — Phase 1 tests, now on GoogleTest.
 //
-// Not a real test framework (that's Phase 11, with Catch2/GoogleTest) — just
-// plain checks, wired into CTest so `ctest` works from day one. Links only
-// against eda_core, same as any frontend would: tests exercise the backend's
-// PUBLIC API, nothing internal.
+// Pulled forward from the original plan (GoogleTest/Catch2 was meant to
+// wait for Phase 11) because having a real framework answer "how do I
+// test this" for Phase 1 beats hand-rolled asserts. Installed via MSYS2's
+// pacman: `mingw-w64-ucrt-x86_64-gtest`, matching our ucrt64 g++ toolchain.
+// `tests/CMakeLists.txt` finds it with find_package(GTest CONFIG) and
+// registers every TEST() below as its own CTest entry via
+// gtest_discover_tests — run `ctest` and you'll see GateTest.AND,
+// GateTest.OR, etc. individually, not one lump test.
 //
-// Deliberately recomputes each expected truth table from scratch here
-// instead of calling eda::Gate::evaluate() a second time — a test that
-// re-derives its answer from the same code it's checking can't catch a
-// logic bug in that code. If backend/src/Gate.cpp ever regresses (e.g. a
-// typo turns NAND into AND during Phase 2's refactor), this test fails.
+// Still links only against eda_core — tests exercise the backend's PUBLIC
+// API, same as any frontend would.
+//
+// Still deliberately recomputes each expected truth table from scratch
+// (expected() below) instead of calling eda::Gate::evaluate() a second
+// time — a test that re-derives its answer from the code it's checking
+// can't catch a logic bug in that code.
+//
+// Concepts introduced here:
+//  - TEST(Suite, Name) { ... }   : GoogleTest macro that expands into a
+//    subclass of ::testing::Test with this body as its test method, and
+//    registers an instance of it at static-init time. `Suite` groups
+//    related tests (shows up as "GateTest.AND" etc. in output).
+//  - EXPECT_EQ / EXPECT_STREQ    : "soft" assertions — record a failure
+//    and keep running the rest of the test (vs. ASSERT_EQ, which stops
+//    the current test immediately). We use EXPECT here so one wrong
+//    input combination doesn't hide the other three.
+//  - Why EXPECT_STREQ and not EXPECT_EQ for name()? `Gate::name()`
+//    returns `const char*`. EXPECT_EQ on two `const char*` compares
+//    POINTERS, not string contents — a classic gotcha. EXPECT_STREQ
+//    compares the actual characters.
+//  - `<<` streamed onto EXPECT_EQ : appends a custom message to the
+//    failure output only (no effect when the check passes).
+//  - No `main()` here — linking GTest::gtest_main (see CMakeLists.txt)
+//    supplies one that runs every registered TEST().
 // ============================================================================
 
 using namespace eda;
@@ -31,45 +53,26 @@ bool expected(GateType type, bool a, bool b) {
         case GateType::NOR:  return !(a || b);
         case GateType::XOR:  return (a || b) && !(a && b); // written differently from Gate.cpp's `a != b` on purpose
     }
-    std::abort(); // unreachable — every GateType is handled above
+    return false; // unreachable — every GateType is handled above
 }
 
-int checkCount = 0;
-int failCount = 0;
-
-void check(bool condition, const char* description) {
-    ++checkCount;
-    if (!condition) {
-        ++failCount;
-        std::fprintf(stderr, "FAIL: %s\n", description);
-    }
-}
-
-void testGate(GateType type, const char* expectedName) {
+void expectTruthTable(GateType type, const char* expectedName) {
     Gate gate(type);
-    check(std::string(gate.name()) == expectedName, expectedName);
+    EXPECT_STREQ(gate.name(), expectedName);
 
     for (bool a : {false, true}) {
         for (bool b : {false, true}) {
-            bool got = gate.evaluate(a, b);
-            bool want = expected(type, a, b);
-            char msg[128];
-            std::snprintf(msg, sizeof(msg), "%s(%d,%d) == %d", expectedName, a, b, want);
-            check(got == want, msg);
+            EXPECT_EQ(gate.evaluate(a, b), expected(type, a, b))
+                << expectedName << "(" << a << ", " << b << ")";
         }
     }
 }
 
 } // namespace
 
-int main() {
-    testGate(GateType::AND,  "AND");
-    testGate(GateType::OR,   "OR");
-    testGate(GateType::NOT,  "NOT");
-    testGate(GateType::NAND, "NAND");
-    testGate(GateType::NOR,  "NOR");
-    testGate(GateType::XOR,  "XOR");
-
-    std::printf("%d/%d checks passed\n", checkCount - failCount, checkCount);
-    return failCount == 0 ? 0 : 1;
-}
+TEST(GateTest, AND)  { expectTruthTable(GateType::AND,  "AND");  }
+TEST(GateTest, OR)   { expectTruthTable(GateType::OR,   "OR");   }
+TEST(GateTest, NOT)  { expectTruthTable(GateType::NOT,  "NOT");  }
+TEST(GateTest, NAND) { expectTruthTable(GateType::NAND, "NAND"); }
+TEST(GateTest, NOR)  { expectTruthTable(GateType::NOR,  "NOR");  }
+TEST(GateTest, XOR)  { expectTruthTable(GateType::XOR,  "XOR");  }

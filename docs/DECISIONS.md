@@ -108,9 +108,10 @@ future Qt port) goes under a new `frontend/<name>/` sibling — never inside
 
 ### 2026-10-18 — Lightweight CTest smoke test now, not deferred entirely to Phase 11
 
-**Decision:** Add `tests/test_gate.cpp` + `tests/CMakeLists.txt` now —
-plain asserts wired into CMake's `enable_testing()`/`add_test()`, runnable
-via `ctest`. No framework (Catch2/GoogleTest) yet; that's still Phase 11.
+**Decision (superseded same day — see next entry):** Add
+`tests/test_gate.cpp` + `tests/CMakeLists.txt` now — plain asserts wired
+into CMake's `enable_testing()`/`add_test()`, runnable via `ctest`. No
+framework (Catch2/GoogleTest) yet; that's still Phase 11.
 
 **Why:** User asked for "how to run, test, and other aspects" to be
 documented for Phase 1 — a test section needs something real to describe,
@@ -122,6 +123,34 @@ Verified it actually catches regressions (temporarily broke `AND`'s
 implementation, confirmed the test failed with the right diagnostic,
 reverted, confirmed green again) rather than trusting it blindly.
 
-**How to apply:** every phase that touches `backend/` adds/extends tests
-under `tests/`, following the same pattern (link `eda_core` only, register
-via `add_test`). Don't wait for Phase 11 to start testing new backend code.
+**How to apply:** superseded — see "GoogleTest brought forward to Phase 1"
+below. The pattern (link `eda_core` only, every backend-touching phase
+adds/extends tests under `tests/`) still holds.
+
+---
+
+### 2026-10-18 — GoogleTest brought forward to Phase 1 (supersedes plain-assert harness)
+
+**Decision:** Replace the plain-assert `tests/test_gate.cpp` with real
+GoogleTest `TEST()` cases, same day it was written. Installed
+`mingw-w64-ucrt-x86_64-gtest` 1.14.0 via MSYS2's `pacman` — matches our
+existing ucrt64 g++ toolchain exactly, so `find_package(GTest CONFIG
+REQUIRED)` resolves with no extra `CMAKE_PREFIX_PATH` hints. Wired
+`gtest_discover_tests` (not a single `add_test()`) so each `TEST()` shows
+up as its own CTest entry (`GateTest.AND`, `GateTest.OR`, ...).
+
+**Why:** User explicitly asked to bring GoogleTest into Phase 1 rather
+than waiting for Phase 11. A real framework from the start beats a
+hand-rolled harness that Phase 11 would've thrown away anyway — no reason
+to write two test harnesses for the same code. `pacman`'s mirror list was
+stale (many 404s against outdated mirrors) but one mirror still succeeded;
+worth knowing that pacman's "too many errors, skipping" noise on a
+multi-mirror failure isn't necessarily a hard failure — check `pacman -Qs`
+to confirm before assuming it didn't install.
+
+**How to apply:** Phase 11 ("Testing & tooling") now means *expanding*
+coverage, CI scripting, and sanitizers (ASan/UBSan) — not introducing a
+framework, since GoogleTest is already in place. Every future
+backend-touching phase adds `TEST()` cases to `tests/`, same pattern:
+link `eda_core` + `GTest::gtest_main`, no new `find_package` needed once
+it's found.
