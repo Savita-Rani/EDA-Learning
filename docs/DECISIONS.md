@@ -154,3 +154,40 @@ framework, since GoogleTest is already in place. Every future
 backend-touching phase adds `TEST()` cases to `tests/`, same pattern:
 link `eda_core` + `GTest::gtest_main`, no new `find_package` needed once
 it's found.
+
+---
+
+### 2026-10-18 — Phase isolation: each phase in new files, never edit a previous phase
+
+**Decision:** Starting with Phase 2, every phase's code lives in new
+files. Phase 1's `Gate` (`backend/include/eda/Gate.h`,
+`backend/src/Gate.cpp`, `frontend/console/main.cpp`,
+`tests/test_gate.cpp`) is never edited again — Phase 2 introduces a
+completely separate `Component` hierarchy (new header, new source, new
+static library `eda_oop`, new frontend `frontend/console_phase2/`, new
+tests `tests/test_component.cpp`), covering the same six gates a
+different way. Both phases' binaries and tests coexist in one build (13
+tests total: 6 `GateTest.*` + 7 `ComponentTest.*`).
+
+Build-file changes are kept additive-only wherever the new code needs
+wiring in: new `add_library`/`add_executable`/`add_subdirectory` blocks
+appended below existing ones, never a modified line in an existing block.
+Verified via `git diff --stat` on all three touched `CMakeLists.txt`
+files: 37 insertions, 0 deletions.
+
+**Why:** User explicitly asked, starting Phase 2: "for phase 2 i will
+need separate code do not edit phase 1." Keeps each phase a standalone,
+runnable reference point — e.g. the switch-based `Gate` and the
+polymorphic `Component` can be compared side by side, rather than the
+earlier implementation being overwritten and lost to history (even though
+git history would technically preserve it, having both runnable
+*simultaneously* is more useful for this project's revision/comparison
+purpose than archaeology through commits).
+
+**How to apply:** every future phase (3-12) follows this pattern — new
+class names/files for new techniques, new frontend directories for new
+demos if needed, new test files, additive-only build file changes. If a
+later phase's design seems to genuinely require changing an earlier
+phase's file (e.g. a future netlist phase wanting `Gate` itself to
+change), stop and ask the user explicitly first rather than assuming —
+that would contradict this default.

@@ -19,3 +19,6 @@ enable_testing()
 add_subdirectory(backend)
 add_subdirectory(frontend/console)
 add_subdirectory(tests)
+
+# Phase 2 (OOP) — new sibling directory, frontend/console above is untouched.
+add_subdirectory(frontend/console_phase2)

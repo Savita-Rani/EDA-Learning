@@ -22,3 +22,20 @@ endif()
 # add_test() entry for the whole executable.
 include(GoogleTest)
 gtest_discover_tests(eda_tests)
+
+# --- Phase 2 (OOP) — separate target, eda_tests above is untouched --------
+# Tests Component/AndGate/OrGate/... (eda_oop), not Gate (eda_core).
+
+add_executable(eda_component_tests
+    test_component.cpp
+)
+
+target_link_libraries(eda_component_tests PRIVATE eda_oop GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_component_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_component_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_component_tests)

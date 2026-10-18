@@ -21,8 +21,8 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
 |---|-------|---------|-------------------|--------|
 | 0 | Scaffold | Project skeleton, CMake, git, docs | build systems, header/source split | ✅ done |
 | 1 | Basics | `Gate` class, truth tables (console) | classes, `enum class`, `switch`, `const` methods, `std::vector` | ✅ done |
-| 2 | OOP | Gate hierarchy, `Wire`/`Signal` | inheritance, virtual/override, abstract base classes, polymorphism | ⏳ next |
-| 3 | STL | Netlist as a graph | containers, iterators, algorithms, references vs pointers, topological sort | planned |
+| 2 | OOP | `Component` hierarchy (new, separate from `Gate`) | inheritance, virtual/override, abstract base classes, polymorphism, `unique_ptr` preview | ✅ done |
+| 3 | STL | Netlist as a graph, `Wire`/`Signal` | containers, iterators, algorithms, references vs pointers, topological sort | ⏳ next |
 | 4 | Simulation engine | Event-driven scheduler | lambdas, `std::function`, `priority_queue`, Observer pattern | planned |
 | 5 | File I/O | Netlist file format parser | streams, string parsing, exceptions | planned |
 | 6 | Templates | Generic signal values (0/1/X/Z) | templates, generic programming, (C++20 concepts) | planned |
@@ -57,3 +57,10 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
   `tests/CMakeLists.txt`) — real framework from day one instead of a
   throwaway hand-rolled harness. Phase 11 is now about expanding coverage,
   sanitizers, and CI, not introducing the framework.
+- **Phase isolation:** starting with Phase 2, each phase's code lives in
+  new files — never editing a previous phase's implementation. Phase 1's
+  `Gate` and Phase 2's `Component` are separate classes, separate
+  libraries (`eda_core` / `eda_oop`), separate frontends/tests, coexisting
+  in the same build. Build-file changes are additive-only (verified via
+  `git diff --stat`: insertions only, zero deletions). Lets every phase
+  stay a standalone, runnable reference point for later comparison.

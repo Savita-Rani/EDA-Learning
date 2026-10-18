@@ -15,3 +15,20 @@ if(MSVC)
 else()
     target_compile_options(eda_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# --- Phase 2 (OOP) — separate target, eda_core above is untouched ---------
+# Component/AndGate/OrGate/... (eda/Component.h) is a brand new hierarchy,
+# not a modification of Gate. Kept as its own static library so Phase 1's
+# eda_core build is unaffected by anything added here.
+
+add_library(eda_oop STATIC
+    src/Component.cpp
+)
+
+target_include_directories(eda_oop PUBLIC include)
+
+if(MSVC)
+    target_compile_options(eda_oop PRIVATE /W4)
+else()
+    target_compile_options(eda_oop PRIVATE -Wall -Wextra -Wpedantic)
+endif()
