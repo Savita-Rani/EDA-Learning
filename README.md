@@ -47,8 +47,12 @@ and a status snapshot, not the "why."
   first phase whose main deliverable needs a human to actually look at
   it — see its doc for what was and wasn't automatically verified):
   `docs/phases/phase9.md`.
+- **Phase 10 — Design patterns** (new files; `ComponentFactory`/
+  `ComponentVisitor` depend on `Component`, `Signal<Args...>`
+  independent — Visitor via external `dynamic_cast` dispatch since
+  `Component` can't be edited to add `accept()`): `docs/phases/phase10.md`.
 
-All nine coexist in the same build.
+All ten coexist in the same build.
 
 ## Build, run, test
 
@@ -67,13 +71,14 @@ cmake --build build
 ./build/bin/eda_memory_demo.exe      # Phase 7 frontend
 ./build/bin/eda_parallel_demo.exe    # Phase 8 frontend
 ./build/bin/eda_imgui_demo.exe       # Phase 9 frontend — the first real GUI; run this one yourself and look
-cd build && ctest --output-on-failure   # all tests, all phases (70 total)
+./build/bin/eda_patterns_demo.exe    # Phase 10 frontend
+cd build && ctest --output-on-failure   # all tests, all phases (86 total)
 ```
 
 Or open the folder in VS Code (CMake Tools + C/C++ extensions): build with
 `Ctrl+Shift+B`, debug with `F5` (`.vscode/tasks.json` / `launch.json`).
 
-See `docs/phases/phase1.md` through `phase9.md` for the full walkthrough
+See `docs/phases/phase1.md` through `phase10.md` for the full walkthrough
 (build details, VS Code steps, what each test checks and why,
 troubleshooting).
 
@@ -97,6 +102,10 @@ backend/
   include/eda/ThreadPool.h      Phase 8 — independent, generic infrastructure
   include/eda/ParallelSimulator.h Phase 8 — depends on ThreadPool + Component
   include/eda/WaveformBuffer.h  Phase 9 — INTERFACE lib (no .cpp at all, independent)
+  include/eda/BufferGate.h       Phase 10 — new Component subclass (depends on Component)
+  include/eda/ComponentFactory.h Phase 10 — depends on Component
+  include/eda/ComponentVisitor.h Phase 10 — depends on Component + BufferGate
+  include/eda/Signal.h           Phase 10 — INTERFACE lib, independent (variadic template)
   src/Gate.cpp              -> eda_core (static library)
   src/Component.cpp         -> eda_oop (static library)
   src/Netlist.cpp           -> eda_netlist (static library, links eda_oop)
@@ -107,6 +116,9 @@ backend/
   src/ThreadPool.cpp        -> eda_threadpool (static library)
   src/ParallelSimulator.cpp -> eda_parallel (static library, links
                                 eda_oop + eda_threadpool)
+  src/BufferGate.cpp,
+  src/ComponentFactory.cpp,
+  src/ComponentVisitor.cpp   -> eda_patterns (static library, links eda_oop)
 frontend/
   console/              Phase 1 UI — links eda_core only
   console_phase2/       Phase 2 UI — links eda_oop only
@@ -120,6 +132,7 @@ frontend/
   imgui_demo/            Phase 9 UI — links eda_netlist + eda_waveform + the
                            fetched imgui lib (ImGui/GLFW/OpenGL); see its
                            CMakeLists.txt for the FetchContent setup
+  patterns_demo/         Phase 10 UI — links eda_patterns + eda_signal
   (qt/ later, if ever ported — same pattern: new sibling dir, link the backend lib)
 tests/
   test_gate.cpp             -> eda_tests (Phase 1, GoogleTest)
@@ -136,11 +149,15 @@ tests/
   test_parallel_simulator.cpp        -> eda_parallel_tests (Phase 8, GoogleTest)
   test_waveform_buffer.cpp             -> eda_waveform_tests (Phase 9, GoogleTest —
                                            the only part of Phase 9 with test coverage)
+  test_buffer_gate.cpp,
+  test_component_factory.cpp,
+  test_component_visitor.cpp           -> eda_patterns_tests (Phase 10, GoogleTest)
+  test_signal.cpp                       -> eda_signal_tests (Phase 10, GoogleTest)
 docs/
   PROJECT_IDEA.md       the vision/why, read this first
   ROADMAP.md            all 12 phases, concepts + status + why (causal chain)
   DECISIONS.md           dated log of choices + rationale
-  phases/phase1.md ... phase9.md  one doc per phase
+  phases/phase1.md ... phase10.md  one doc per phase
   notes/gtest.md, ...    cross-cutting reference notes (revision/interview prep)
 .vscode/              tasks.json (build), launch.json (gdb debug), settings.json
 build/                (gitignored) CMake build output -> build/bin/*.exe

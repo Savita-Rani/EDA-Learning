@@ -32,7 +32,7 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
 | 7 | Memory | `OwningPtr<T>`/`SharedOwningPtr<T>`/`FileHandle` (independent, like Phase 4/6) | RAII, rule of 5 (two idioms), reference counting, copy-and-swap, converting constructors | ✅ done |
 | 8 | Concurrency | `ParallelSimulator` (depends on `Component` + this phase's `ThreadPool`) | `std::thread`, mutex + condition_variable, atomics, hand-written thread pool, level-based scheduling | ✅ done |
 | 9 | Frontend | Dear ImGui schematic + waveform view (depends on Phase 3's `Netlist`) | immediate-mode GUI loop, `FetchContent`, CMake `INTERFACE` libraries, vendoring third-party source | ✅ done |
-| 10 | Design patterns | Factory, Visitor, refined Observer | advanced OOP patterns, exception safety, const-correctness | ⏳ next |
+| 10 | Design patterns | `ComponentFactory`/`ComponentVisitor` (depend on `Component`) + `Signal<Args...>` (independent) | Factory, Visitor via external dispatch (RTTI), variadic templates, tested strong exception-safety guarantees | ✅ done |
 | 11 | Testing | Expanded coverage, sanitizers, CI | ASan/UBSan, CI script (GoogleTest itself arrived early — see below) | planned |
 | 12 | Performance | Profiling & optimization | cache-friendly layout, benchmarking | planned |
 
@@ -54,7 +54,7 @@ row's "leaves open" is the next row's "fixes."
 | 7 | Memory management ✅ | Smart pointers (hand-written `OwningPtr`/`SharedOwningPtr`) + rule-of-5 (two idioms) + move semantics make ownership explicit and leak-proof, formalizing what Phase 2's `unique_ptr` preview started informally. RAII's exception-safety guarantee demonstrated directly (a thrown exception, a file still correctly flushed/closed). | Simulating a large netlist is single-threaded — independent parts of the circuit evaluate serially even though nothing requires that. |
 | 8 | Concurrency ✅ | Independent dependency-levels of a circuit evaluate in parallel via a hand-written `ThreadPool` (mutex+condition_variable for the task queue, atomics for a lock-free counter). Demonstrated speedup (~9×, 8 threads) is honestly labeled artificial — this project's actual gates are far too cheap for threading overhead not to dominate; the mechanism is real, the magnitude is a stand-in for genuinely expensive gates. | Still console-only — no way to *see* the circuit or its signals, only printed truth tables/logs. |
 | 9 | Frontend (ImGui) ✅ | A real UI: schematic view (live checkboxes + colored wire values) + waveform viewer (`PlotLines`), wired to Phase 3's `Netlist`. First genuinely external dependencies (ImGui/GLFW/OpenGL); first phase whose main deliverable can't be verified by automated testing alone — a `--max-frames` smoke-test mode confirms it runs without crashing, but visual correctness needs a human to actually look. | The architecture (how gates/wires/the engine relate) has accreted informally across 9 phases — never named or cleaned up as patterns. |
-| 10 | Design patterns | Factory (component creation), Visitor (netlist traversal), refined Observer (signal propagation) — the informal structures from earlier phases get named, cleaned up, made reusable. | By now the codebase is large enough that manual spot-checking isn't sufficient assurance of correctness. |
+| 10 | Design patterns ✅ | Factory (`ComponentFactory`, component creation), Visitor (`ComponentVisitor`, over a collection of `Component`s — not literally traversing a `Netlist` instance, since `Netlist`'s internals are private and off-limits to extend; built against `Component` directly instead), refined Observer (`Signal<Args...>`, generalizing Phase 4's wire-watching) — the informal structures from earlier phases get named, cleaned up, made reusable. | By now the codebase is large enough that manual spot-checking isn't sufficient assurance of correctness. |
 | 11 | Testing & tooling | Expanded test coverage across everything built so far, sanitizers (ASan/UBSan) for memory/UB bugs, CI scripting. (GoogleTest itself arrived early, in Phase 1 — this phase is about *scale* of coverage, not introducing the framework.) | Correctness is now trustworthy, but nothing has been measured for speed — premature optimization before this point would have been wasted effort on code that was still changing shape. |
 | 12 | Performance | Profile real bottlenecks, optimize data layout for cache-friendliness, benchmark before/after. Last, deliberately — only after correctness is established. | *(end of planned roadmap)* |
 
@@ -121,4 +121,9 @@ the plan.
   Phase 3's `Netlist` (new capability — a GUI — built on the existing
   engine) and pulls in this project's first genuinely external
   dependencies (Dear ImGui via `FetchContent`, GLFW via pacman, OpenGL
-  from the system).
+  from the system). Phase 10 splits the same way Phases 8/9 did:
+  `ComponentFactory`/`ComponentVisitor` depend on `Component`;
+  `Signal<Args...>` is independent. Its Visitor had to use external
+  `dynamic_cast`-based dispatch instead of textbook double-dispatch,
+  specifically because the textbook shape needs a virtual `accept()`
+  added to `Component` — off-limits.

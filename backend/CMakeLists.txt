@@ -183,3 +183,32 @@ endif()
 
 add_library(eda_waveform INTERFACE)
 target_include_directories(eda_waveform INTERFACE include)
+
+# --- Phase 10 (Design patterns) — separate targets, nothing above touched -
+# ComponentFactory/BufferGate/ComponentVisitor all depend on eda_oop's
+# Component (reused, like Phases 3/4/6/8/9) — new capability (factory,
+# traversal) built on an existing piece, grouped into one eda_patterns
+# library since they share that dependency. Signal<Args...> is fully
+# independent, generic infrastructure (no .cpp — header-only template,
+# same reason as Phase 6/7/9's INTERFACE-shaped pieces) — kept in its
+# own eda_signal INTERFACE library specifically so it does NOT carry an
+# eda_oop dependency it doesn't need. See docs/DECISIONS.md, "Phase 10
+# splits by dependency shape, same as Phases 8 and 9."
+
+add_library(eda_patterns STATIC
+    src/BufferGate.cpp
+    src/ComponentFactory.cpp
+    src/ComponentVisitor.cpp
+)
+
+target_include_directories(eda_patterns PUBLIC include)
+target_link_libraries(eda_patterns PUBLIC eda_oop)
+
+if(MSVC)
+    target_compile_options(eda_patterns PRIVATE /W4)
+else()
+    target_compile_options(eda_patterns PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_library(eda_signal INTERFACE)
+target_include_directories(eda_signal INTERFACE include)

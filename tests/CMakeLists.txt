@@ -178,3 +178,37 @@ else()
 endif()
 
 gtest_discover_tests(eda_waveform_tests)
+
+# --- Phase 10 (Design patterns) — separate targets, everything above untouched -
+# Tests BufferGate/ComponentFactory/ComponentVisitor (eda_patterns, depends
+# on eda_oop) and Signal<Args...> (eda_signal, independent) separately.
+
+add_executable(eda_patterns_tests
+    test_buffer_gate.cpp
+    test_component_factory.cpp
+    test_component_visitor.cpp
+)
+
+target_link_libraries(eda_patterns_tests PRIVATE eda_patterns GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_patterns_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_patterns_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_patterns_tests)
+
+add_executable(eda_signal_tests
+    test_signal.cpp
+)
+
+target_link_libraries(eda_signal_tests PRIVATE eda_signal GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_signal_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_signal_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_signal_tests)

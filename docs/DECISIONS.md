@@ -540,3 +540,75 @@ into its own dependency-free piece (as `WaveformBuffer` was), give
 the rendering shell's basic liveness, while being explicit to the user
 about what wasn't (and likely can't practically be) verified
 automatically.
+
+---
+
+### 2026-10-18 — Visitor via external dispatch (dynamic_cast), not double-dispatch, because Component can't be edited
+
+**Decision:** `ComponentVisitor`/`acceptVisitor()` (Phase 10) implement
+Visitor via a free function that `dynamic_cast`s `component` against
+each known concrete type, calling the matching `visitXxx()` method —
+not the textbook GoF shape, where the visited class has a virtual
+`accept(Visitor&)` method that calls back into the visitor.
+
+**Why:** the textbook shape requires adding `accept()` to `Component`
+— Phase 2's file, off-limits under this project's phase-isolation
+rule. External dispatch via RTTI is the standard, correct technique
+for exactly this situation (Visitor-shaped behavior over a hierarchy
+you don't own — a third-party library's types, or here, an earlier
+phase's untouchable base class) — not a workaround snuck past the
+rule, but arguably a more realistic demonstration of *why* this
+Visitor variant exists than a textbook example with a conveniently
+editable base class would be. Works because `Component` is already
+polymorphic (virtual destructor, from Phase 2) — `dynamic_cast`
+requires that.
+
+**How to apply:** if a future phase needs Visitor-style dispatch over
+a hierarchy this project CAN still edit (something from Phase 10
+onward, say), the textbook double-dispatch shape (`accept()` on the
+base class) is more efficient (no RTTI, no cast chain) and would be the
+better default there. External dispatch is specifically for when
+double-dispatch isn't available — a deliberate choice here, not a
+default to reach for everywhere.
+
+---
+
+### 2026-10-18 — ComponentFactory formalizes, doesn't replace, Phase 5's ad hoc factory
+
+**Decision:** `ComponentFactory` (Phase 10) is a fresh, standalone,
+extensible factory — `registerType()`/`create()`/etc. Phase 5's
+`NetlistLoader.cpp` keeps its own local, hardcoded,
+`std::unordered_map<std::string, std::function<...>>`-based
+`makeComponent()` function exactly as it was. `ComponentFactory` is
+NOT wired into `NetlistLoader` as a replacement.
+
+**Why:** editing `NetlistLoader.cpp` to use the new factory would
+violate the phase-isolation rule — Phase 5's file stays untouched.
+`ComponentFactory` is presented as "what that ad hoc pattern should
+grow into," demonstrated fresh on its own (the demo + its own tests),
+not retrofitted into code that already works and was already tested.
+
+**How to apply:** when a later phase formalizes a pattern an earlier
+phase used informally, demonstrate the formalized version
+independently rather than editing the earlier phase's working code to
+adopt it — even when the formalized version is strictly better. The
+earlier code isn't broken; it's just an earlier, less general version
+of the same idea, and it stays exactly as it was tested.
+
+---
+
+### 2026-10-18 — Phase 10 splits by dependency shape, same as Phases 8 and 9
+
+**Decision:** `BufferGate`/`ComponentFactory`/`ComponentVisitor`
+(depend on `Component`) go in one library (`eda_patterns`);
+`Signal<Args...>` (fully independent, generic) goes in its own
+`INTERFACE` library (`eda_signal`).
+
+**Why:** same reasoning as Phase 8 (`ThreadPool` independent,
+`ParallelSimulator` depends on it + `Component`) and Phase 9
+(`WaveformBuffer` independent, the ImGui demo depends on `Netlist`) —
+bundling a dependent piece and an independent piece into one library
+would force the independent one to transitively carry a dependency
+(`eda_oop`) it has no actual need for. Splitting by what each piece
+*actually* depends on, not by which phase introduced them, keeps each
+library's dependency graph honest.

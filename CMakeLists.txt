@@ -43,3 +43,6 @@ add_subdirectory(frontend/parallel_demo)
 
 # Phase 9 (Frontend, ImGui) — new sibling directory, everything above is untouched.
 add_subdirectory(frontend/imgui_demo)
+
+# Phase 10 (Design patterns) — new sibling directory, everything above is untouched.
+add_subdirectory(frontend/patterns_demo)
