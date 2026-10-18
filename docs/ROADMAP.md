@@ -12,6 +12,11 @@ test/troubleshooting instructions plus the concepts table, kept with the
 phase rather than buried in one growing file. Start there for "how do I run
 this" questions; this file is for the cross-phase overview.
 
+Cross-cutting topics that outgrow a single phase (a library, a tool, a
+technique used across several phases) get their own doc under
+`docs/notes/<topic>.md` instead — written for revision/interview prep, not
+just "how this repo uses it." First one: `docs/notes/gtest.md`.
+
 | # | Phase | Feature | New C++ concepts | Status |
 |---|-------|---------|-------------------|--------|
 | 0 | Scaffold | Project skeleton, CMake, git, docs | build systems, header/source split | ✅ done |

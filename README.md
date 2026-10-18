@@ -44,6 +44,7 @@ docs/
   ROADMAP.md            all 12 phases, concepts + status
   DECISIONS.md           dated log of choices + rationale
   phases/phase1.md, ...  one doc per phase: build/run/test/troubleshoot/concepts
+  notes/gtest.md, ...    cross-cutting reference notes (revision/interview prep)
 .vscode/              tasks.json (build), launch.json (gdb debug), settings.json
 build/                (gitignored) CMake build output -> build/bin/*.exe
 ```
