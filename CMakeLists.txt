@@ -9,9 +9,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # subdirectory produced them — keeps launch.json / running binaries simple.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+enable_testing()
+
 # backend/        -> eda_core: the simulation engine, zero UI knowledge.
 # frontend/console -> today's UI. frontend/imgui, frontend/qt can be added
 #                      later as siblings; neither backend/ nor this file's
 #                      structure needs to change when that happens.
+# tests/          -> eda_tests, run via `ctest`; links only against eda_core.
 add_subdirectory(backend)
 add_subdirectory(frontend/console)
+add_subdirectory(tests)

@@ -103,3 +103,25 @@ hierarchy, netlist, simulation engine, parsing, templates, memory,
 concurrency) goes under `backend/`. UI-only work (Phase 9 ImGui, a possible
 future Qt port) goes under a new `frontend/<name>/` sibling — never inside
 `backend/`, and never with `backend/` including frontend headers.
+
+---
+
+### 2026-10-18 — Lightweight CTest smoke test now, not deferred entirely to Phase 11
+
+**Decision:** Add `tests/test_gate.cpp` + `tests/CMakeLists.txt` now —
+plain asserts wired into CMake's `enable_testing()`/`add_test()`, runnable
+via `ctest`. No framework (Catch2/GoogleTest) yet; that's still Phase 11.
+
+**Why:** User asked for "how to run, test, and other aspects" to be
+documented for Phase 1 — a test section needs something real to describe,
+not just "look at the console output." A zero-dependency CTest-based smoke
+test is cheap to add, gives every future phase a regression check as
+`Gate`/the netlist/the simulation engine evolve, and the same `ctest` entry
+point survives unchanged when Phase 11 adds a real framework alongside it.
+Verified it actually catches regressions (temporarily broke `AND`'s
+implementation, confirmed the test failed with the right diagnostic,
+reverted, confirmed green again) rather than trusting it blindly.
+
+**How to apply:** every phase that touches `backend/` adds/extends tests
+under `tests/`, following the same pattern (link `eda_core` only, register
+via `add_test`). Don't wait for Phase 11 to start testing new backend code.

@@ -7,6 +7,11 @@ Each phase = one working increment + new C++ concepts introduced in service
 of that increment. Status is kept in sync with the task list; this file is
 the durable record of *what each phase covers and why*.
 
+Each phase also gets its own doc under `docs/phases/phaseN.md` — build/run/
+test/troubleshooting instructions plus the concepts table, kept with the
+phase rather than buried in one growing file. Start there for "how do I run
+this" questions; this file is for the cross-phase overview.
+
 | # | Phase | Feature | New C++ concepts | Status |
 |---|-------|---------|-------------------|--------|
 | 0 | Scaffold | Project skeleton, CMake, git, docs | build systems, header/source split | ✅ done |
