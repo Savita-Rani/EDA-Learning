@@ -73,3 +73,20 @@ else()
 endif()
 
 gtest_discover_tests(eda_event_tests)
+
+# --- Phase 5 (File I/O) — separate target, everything above untouched -----
+# Tests NetlistLoader (eda_fileio), which depends on eda_netlist's Netlist.
+
+add_executable(eda_fileio_tests
+    test_netlist_loader.cpp
+)
+
+target_link_libraries(eda_fileio_tests PRIVATE eda_fileio GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_fileio_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_fileio_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_fileio_tests)

@@ -71,3 +71,22 @@ if(MSVC)
 else()
     target_compile_options(eda_event PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# --- Phase 5 (File I/O) — separate target, nothing above touched ---------
+# NetlistLoader (eda/NetlistLoader.h) DEPENDS ON eda_netlist's Netlist —
+# reused, not duplicated. New capability (parsing) built on an existing
+# piece, same relationship Phase 3 had to Phase 2. See docs/DECISIONS.md,
+# "Phase 5 depends on Phase 3."
+
+add_library(eda_fileio STATIC
+    src/NetlistLoader.cpp
+)
+
+target_include_directories(eda_fileio PUBLIC include)
+target_link_libraries(eda_fileio PUBLIC eda_netlist)
+
+if(MSVC)
+    target_compile_options(eda_fileio PRIVATE /W4)
+else()
+    target_compile_options(eda_fileio PRIVATE -Wall -Wextra -Wpedantic)
+endif()

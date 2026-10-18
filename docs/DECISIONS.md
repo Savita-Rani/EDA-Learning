@@ -267,3 +267,56 @@ on first run — not a planted bug. Fixed with "delta cycle" batching (see
 account). Noted here as a reminder that this project's testing habit
 (verify by demonstration) catches more than contrived regressions when
 the code under test is genuinely new.
+
+---
+
+### 2026-10-18 — Phase 5 depends on Phase 3 (reuse, not a parallel technique)
+
+**Decision:** `NetlistLoader` (Phase 5) depends on Phase 3's `Netlist` —
+`loadNetlist()`/`loadNetlistFile()` parse a text file directly into a
+`Netlist`. New `eda_fileio` library, linking `eda_netlist` `PUBLIC`.
+Nothing in `Netlist.h`/`.cpp` was edited.
+
+**Why this is the Phase-3-to-Phase-2 pattern, not the Phase-4-to-Phase-3
+pattern:** parsing a circuit description into a `Netlist` is genuinely
+*new* functionality — there's no prior "thing" to compare it against the
+way `EventSimulator` was compared against `Netlist`. This is reuse of an
+existing piece to build something that didn't exist before, exactly like
+`Netlist` reusing `Component`.
+
+**Note — could have targeted `EventSimulator` instead, or both:** the
+parser's output is deliberately a generic `Netlist`, not tied to
+`EventSimulator`'s wiring shape, even though both share the same
+`addComponent(component, inputWires, outputWire)` signature. Chose
+`Netlist` specifically because the roadmap phase description says
+"netlist file format parser," and `Netlist`/`EventSimulator` are
+interchangeable enough (same wiring shape) that adding a second loader
+targeting `EventSimulator` later, if ever needed, would be a small,
+independent addition — not a reason to complicate this phase now.
+
+---
+
+### 2026-10-18 — `ifstream::is_open()` vs `operator!`/`fail()`: a real, toolchain-specific bug
+
+**Finding:** on this project's toolchain (g++ 13.2.0, MSYS2 ucrt64),
+constructing a `std::ifstream` from a path that fails to open does
+**not** reliably set `failbit`. `is_open()` correctly reports `false`,
+but `fail()`, `bad()`, `eof()`, and `operator!` all report "no problem"
+regardless. Confirmed via an isolated repro outside this project's code
+(plain `g++ -std=c++20` on a nonexistent filename) — not specific to this
+project's parser logic.
+
+**Caught by:** `tests/test_netlist_loader.cpp`'s `ThrowsOnMissingFile`,
+which failed on first run — `loadNetlistFile()` silently returned an
+empty `Netlist` for a nonexistent path instead of throwing.
+
+**Decision:** always check `.is_open()` after constructing an
+`std::ifstream` from a filename in this project, never `!file`/`.fail()`
+alone, for the specific "did opening succeed" question. `is_open()` is
+also simply more direct regardless of the toolchain quirk.
+
+**How to apply:** this isn't limited to `NetlistLoader` — any future
+phase that opens a file (e.g., if a future save/export feature is added)
+should use the same check. Worth remembering as a general lesson: don't
+assume standard-mandated iostream behavior holds on every toolchain
+without verifying.

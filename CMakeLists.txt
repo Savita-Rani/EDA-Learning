@@ -28,3 +28,6 @@ add_subdirectory(frontend/netlist_demo)
 
 # Phase 4 (Event-driven engine) — new sibling directory, everything above is untouched.
 add_subdirectory(frontend/event_demo)
+
+# Phase 5 (File I/O) — new sibling directory, everything above is untouched.
+add_subdirectory(frontend/fileio_demo)

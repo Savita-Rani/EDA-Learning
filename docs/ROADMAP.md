@@ -24,8 +24,8 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
 | 2 | OOP | `Component` hierarchy (new, separate from `Gate`) | inheritance, virtual/override, abstract base classes, polymorphism, `unique_ptr` preview | ✅ done |
 | 3 | STL | Netlist as a graph (depends on Phase 2's `Component`) | `unordered_map`/`vector`/`queue`, topological sort (Kahn's algorithm), exceptions | ✅ done |
 | 4 | Simulation engine | `EventSimulator` (parallel technique to `Netlist`, both depend on `Component`) | lambdas, `std::function`, `priority_queue`, Observer pattern, `unordered_set` dedup, delta-cycle batching | ✅ done |
-| 5 | File I/O | Netlist file format parser | streams, string parsing, exceptions | ⏳ next |
-| 6 | Templates | Generic signal values (0/1/X/Z) | templates, generic programming, (C++20 concepts) | planned |
+| 5 | File I/O | `NetlistLoader` (depends on Phase 3's `Netlist`) | `std::istream`/`ifstream`, `getline`/`istringstream` parsing, exceptions, string→factory `unordered_map` | ✅ done |
+| 6 | Templates | Generic signal values (0/1/X/Z) | templates, generic programming, (C++20 concepts) | ⏳ next |
 | 7 | Memory | Smart pointers, RAII, move semantics | `unique_ptr`/`shared_ptr`, rule of 5, move semantics | planned |
 | 8 | Concurrency | Multithreaded simulation | `std::thread`, mutex, atomics, thread pools | planned |
 | 9 | Frontend | Dear ImGui schematic + waveform view | linking external libs, UI event loop, backend/frontend separation | planned |
@@ -46,7 +46,7 @@ row's "leaves open" is the next row's "fixes."
 | 2 | OOP | New gate type = new class, zero edits elsewhere (polymorphism replaces the `switch`). | Gates are still isolated objects — nothing connects them into a circuit; no way to hold/iterate a *mix* of component types as a graph. |
 | 3 | STL ✅ | A netlist (graph of `Component`s + wires, via `std::unordered_map`/`vector`) now evaluates itself automatically in correct order — `Netlist::simulate()` computes a topological sort (Kahn's algorithm) and runs every component once, in dependency order. Fixed Phase 2's "gates are isolated objects" gap. | `simulate()` does a **full recompute of every component, every call** — no notion of "only re-evaluate what a changed input actually affects," and no concept of discrete time, so sequential elements (flip-flops, clocked delay) have no way to exist. Fine for a handful of gates; doesn't scale to a large circuit re-simulated after one input flips. |
 | 4 | Simulation engine ✅ | An event-driven scheduler (`EventSimulator`): only re-evaluates components downstream of an actual signal change, via a time-ordered event queue with same-instant events batched together — fixes Phase 3's full-recompute limitation directly. (Required a real fix mid-phase: naive one-event-at-a-time processing had a genuine race when two inputs changed simultaneously — see `docs/phases/phase4.md`.) | Circuits are still hand-built in C++ code (`addComponent` calls) — no way to describe a circuit as data/load one from a file. |
-| 5 | File I/O | Netlists load from a text file — describe a circuit as data, not code. | Signals are hardcoded `bool` — no unknown/floating (`X`) or high-impedance (`Z`) states, no multi-bit buses. |
+| 5 | File I/O ✅ | Netlists load from a text file (`NetlistLoader`) — describe a circuit as data, not code. Found a second real, toolchain-specific bug along the way (`ifstream::is_open()` vs `operator!`/`fail()` — see `docs/phases/phase5.md`). | Signals are hardcoded `bool` — no unknown/floating (`X`) or high-impedance (`Z`) states, no multi-bit buses. Already bit us in Phase 4 (a wire's "unset" state was indistinguishable from a genuinely-computed `false`). |
 | 6 | Templates | Signal value type becomes generic — richer states possible without rewriting the engine per type. | Netlists/components are heap-allocated through the hierarchy with no rigorous ownership story — who deletes what, and when, isn't yet governed by explicit rules. |
 | 7 | Memory management | Smart pointers + rule-of-5 + move semantics make ownership explicit and leak-proof, formalizing what Phase 2's `unique_ptr` preview started informally. | Simulating a large netlist is single-threaded — independent parts of the circuit evaluate serially even though nothing requires that. |
 | 8 | Concurrency | Independent subgraphs evaluate in parallel (thread pool, mutex/atomics for shared state) — real speedup on large circuits. | Still console-only — no way to *see* the circuit or its signals, only printed truth tables/logs. |
@@ -100,4 +100,6 @@ the plan.
   (Phase 3 → Phase 2's `Component`), but keep a new phase independent
   when it's solving the *same* problem a previous phase solved, just
   differently (Phase 4's `EventSimulator` vs. Phase 3's `Netlist` — both
-  depend on `Component`, neither depends on the other).
+  depend on `Component`, neither depends on the other). Phase 5's
+  `NetlistLoader` depends directly on Phase 3's `Netlist` (new capability
+  — parsing — built on an existing piece, not a comparison).
