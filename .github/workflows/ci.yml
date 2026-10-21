@@ -1,0 +1,92 @@
+# .github/workflows/ci.yml — Phase 11.
+#
+# NOT YET RUN. This repo has no remote configured (local-only git repo),
+# so this workflow has never actually been triggered by GitHub Actions —
+# stated plainly rather than implied otherwise. It's written to be
+# correct based on everything verified locally in this phase, but
+# "written correctly" and "confirmed working in CI" are different
+# claims; only the first one is true right now. See docs/phases/phase11.md.
+#
+# Three jobs, for three different reasons:
+#   windows      — mirrors this project's actual local dev toolchain
+#                   exactly (MSYS2 ucrt64, MinGW g++, GLFW via pacman)
+#                   via the well-established msys2/setup-msys2 action.
+#                   Most likely to just work if ever triggered, since
+#                   it's the same toolchain already verified throughout
+#                   every phase.
+#   windows-asan — runs scripts/sanitize-msvc.ps1 (the EXACT script
+#                   verified locally — all 90 tests pass under it, and
+#                   a standalone heap-buffer-overflow repro confirmed
+#                   ASan genuinely catches real bugs; see
+#                   docs/phases/phase11.md for the full account) on
+#                   windows-latest's pre-installed MSVC. Reuses the
+#                   script rather than duplicating its logic in YAML —
+#                   whatever's verified locally is exactly what CI runs.
+#   sanitize     — ubuntu-latest's system GCC ships libasan/libubsan,
+#                   unlike this project's MinGW/ucrt64 toolchain
+#                   (confirmed directly: -fsanitize=address,undefined
+#                   fails to link locally — see docs/phases/phase11.md).
+#                   Gets UBSan coverage too, which MSVC's sanitizer
+#                   support doesn't include at all.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-gtest
+            mingw-w64-ucrt-x86_64-glfw
+
+      - name: Configure
+        run: cmake -S . -B build -G "MinGW Makefiles"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: cd build && ctest --output-on-failure
+
+  windows-asan:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and test under MSVC AddressSanitizer
+        shell: pwsh
+        run: .\scripts\sanitize-msvc.ps1
+
+  sanitize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libgtest-dev libgl1-mesa-dev libglfw3-dev
+
+      - name: Configure (with sanitizers)
+        run: cmake -S . -B build -DEDA_ENABLE_SANITIZERS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test (under ASan + UBSan)
+        run: cd build && ctest --output-on-failure

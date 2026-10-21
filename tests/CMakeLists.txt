@@ -2,7 +2,26 @@
 # Links only against the backend, exactly like a frontend would: tests
 # exercise eda_core's public API, never its private implementation.
 
-find_package(GTest CONFIG REQUIRED)
+if(MSVC)
+    # The pacman-installed GTest package (below) is built for the
+    # MinGW ABI and isn't link-compatible with MSVC. Phase 11's
+    # AddressSanitizer path uses MSVC, so fetch+build GoogleTest from
+    # source instead — same FetchContent technique already used for
+    # Dear ImGui in Phase 9, just applied to GoogleTest here. Modern
+    # GoogleTest's own CMakeLists.txt provides the same GTest::gtest_main
+    # alias target either way, so every test target below needs zero
+    # changes regardless of which path provided it.
+    include(FetchContent)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.15.2
+    )
+    FetchContent_MakeAvailable(googletest)
+else()
+    find_package(GTest CONFIG REQUIRED)
+endif()
 
 add_executable(eda_tests
     test_gate.cpp
@@ -212,3 +231,25 @@ else()
 endif()
 
 gtest_discover_tests(eda_signal_tests)
+
+# --- Phase 11 (Testing & tooling) — separate target, everything above untouched -
+# New tests closing real gaps found via gcov coverage measurement in
+# earlier phases' code (FileHandle move-assignment, ComponentVisitor
+# OR/NOT/NOR dispatch, NetlistLoader's remaining gate types + a parse
+# error path) — added here, NOT by editing the original phases' test
+# files. Links eda_memory + eda_patterns + eda_fileio (three existing
+# pieces, reused), same as any demo linking multiple backend libraries.
+
+add_executable(eda_coverage_tests
+    test_coverage_expansion.cpp
+)
+
+target_link_libraries(eda_coverage_tests PRIVATE eda_memory eda_patterns eda_fileio GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_coverage_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_coverage_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_coverage_tests)

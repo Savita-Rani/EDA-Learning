@@ -1,9 +1,19 @@
 build/
+# Phase 11's alternate build configurations (coverage, sanitizers) —
+# kept out of the default `build/` so a normal build is never
+# instrumented by accident. See docs/phases/phase11.md.
+build-coverage/
+build-sanitize/
+build-msvc-sanitize/
 *.o
 *.obj
 *.exe
+*.pdb
 .cache/
 compile_commands.json
+*.gcov
+*.gcda
+*.gcno
 
 # Runtime artifacts from running demos from the repo root (e.g.
 # frontend/memory_demo's trace log) — not build output, not test

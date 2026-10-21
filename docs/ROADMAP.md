@@ -33,7 +33,7 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
 | 8 | Concurrency | `ParallelSimulator` (depends on `Component` + this phase's `ThreadPool`) | `std::thread`, mutex + condition_variable, atomics, hand-written thread pool, level-based scheduling | ✅ done |
 | 9 | Frontend | Dear ImGui schematic + waveform view (depends on Phase 3's `Netlist`) | immediate-mode GUI loop, `FetchContent`, CMake `INTERFACE` libraries, vendoring third-party source | ✅ done |
 | 10 | Design patterns | `ComponentFactory`/`ComponentVisitor` (depend on `Component`) + `Signal<Args...>` (independent) | Factory, Visitor via external dispatch (RTTI), variadic templates, tested strong exception-safety guarantees | ✅ done |
-| 11 | Testing | Expanded coverage, sanitizers, CI | ASan/UBSan, CI script (GoogleTest itself arrived early — see below) | planned |
+| 11 | Testing | Measured coverage (98.22% backend/src, every gap explained), sanitizers (ASan unavailable on primary MinGW toolchain, checked — but verified working via MSVC, already installed), CI script + workflow | `gcov`/`--coverage`, CMake options, exit-code-propagating scripts, MSVC AddressSanitizer | ✅ done |
 | 12 | Performance | Profiling & optimization | cache-friendly layout, benchmarking | planned |
 
 ## Why this order — the causal chain between phases
@@ -55,7 +55,7 @@ row's "leaves open" is the next row's "fixes."
 | 8 | Concurrency ✅ | Independent dependency-levels of a circuit evaluate in parallel via a hand-written `ThreadPool` (mutex+condition_variable for the task queue, atomics for a lock-free counter). Demonstrated speedup (~9×, 8 threads) is honestly labeled artificial — this project's actual gates are far too cheap for threading overhead not to dominate; the mechanism is real, the magnitude is a stand-in for genuinely expensive gates. | Still console-only — no way to *see* the circuit or its signals, only printed truth tables/logs. |
 | 9 | Frontend (ImGui) ✅ | A real UI: schematic view (live checkboxes + colored wire values) + waveform viewer (`PlotLines`), wired to Phase 3's `Netlist`. First genuinely external dependencies (ImGui/GLFW/OpenGL); first phase whose main deliverable can't be verified by automated testing alone — a `--max-frames` smoke-test mode confirms it runs without crashing, but visual correctness needs a human to actually look. | The architecture (how gates/wires/the engine relate) has accreted informally across 9 phases — never named or cleaned up as patterns. |
 | 10 | Design patterns ✅ | Factory (`ComponentFactory`, component creation), Visitor (`ComponentVisitor`, over a collection of `Component`s — not literally traversing a `Netlist` instance, since `Netlist`'s internals are private and off-limits to extend; built against `Component` directly instead), refined Observer (`Signal<Args...>`, generalizing Phase 4's wire-watching) — the informal structures from earlier phases get named, cleaned up, made reusable. | By now the codebase is large enough that manual spot-checking isn't sufficient assurance of correctness. |
-| 11 | Testing & tooling | Expanded test coverage across everything built so far, sanitizers (ASan/UBSan) for memory/UB bugs, CI scripting. (GoogleTest itself arrived early, in Phase 1 — this phase is about *scale* of coverage, not introducing the framework.) | Correctness is now trustworthy, but nothing has been measured for speed — premature optimization before this point would have been wasted effort on code that was still changing shape. |
+| 11 | Testing & tooling ✅ | Measured (not guessed) coverage via `gcov` — 94.40% on first measurement, 98.22% after closing 3 real gaps found by reading the actual uncovered lines, every remaining gap individually explained. Sanitizers checked directly and found unavailable on the primary MinGW toolchain (no `libasan`/`libubsan`) — rather than stopping there, shifted to MSVC (already installed) and verified its AddressSanitizer works end-to-end: all 90 tests pass under it, and a deliberate standalone repro confirmed it catches real bugs. A local CI script verified on both the pass and fail path, plus a GitHub Actions workflow with three jobs (`windows`, `windows-asan`, `sanitize`) — written, explicitly not yet run — no remote. | Correctness is now trustworthy, but nothing has been measured for speed — premature optimization before this point would have been wasted effort on code that was still changing shape. |
 | 12 | Performance | Profile real bottlenecks, optimize data layout for cache-friendliness, benchmark before/after. Last, deliberately — only after correctness is established. | *(end of planned roadmap)* |
 
 **The thesis:** difficulty tracks necessity, not a fixed syllabus order —
@@ -126,4 +126,12 @@ the plan.
   `Signal<Args...>` is independent. Its Visitor had to use external
   `dynamic_cast`-based dispatch instead of textbook double-dispatch,
   specifically because the textbook shape needs a virtual `accept()`
-  added to `Component` — off-limits.
+  added to `Component` — off-limits. Phase 11 found real coverage gaps
+  in Phases 5/7/10's own tests via `gcov` — closed them in a brand-new
+  `tests/test_coverage_expansion.cpp` rather than editing those phases'
+  original test files, extending the isolation rule's logic to this
+  exact situation. Sanitizers checked directly and found genuinely
+  unavailable on the primary MinGW toolchain — rather than stopping
+  there, shifted to MSVC (already installed on this machine) as a
+  parallel opt-in build path and verified its AddressSanitizer actually
+  works (all 90 tests clean, a deliberate bug repro genuinely caught).

@@ -612,3 +612,105 @@ would force the independent one to transitively carry a dependency
 (`eda_oop`) it has no actual need for. Splitting by what each piece
 *actually* depends on, not by which phase introduced them, keeps each
 library's dependency graph honest.
+
+---
+
+### 2026-10-18 — AddressSanitizer/UndefinedBehaviorSanitizer don't link on this project's toolchain (checked, documented, worked around via CI) — SUPERSEDED, see 2026-10-21 entry below
+
+**Finding:** `-fsanitize=address` and `-fsanitize=undefined` both fail
+at the link step on this project's MinGW/ucrt64 toolchain —
+`cannot find -lasan`/`cannot find -lubsan`. Confirmed against both a
+minimal standalone repro and this project's actual `eda_tests` target.
+No `libasan`/`libubsan` exist anywhere in the MSYS2 installation; no
+`clang64` environment (LLVM sanitizer runtimes) is installed either.
+
+**Decision:** add the `EDA_ENABLE_SANITIZERS` CMake option anyway (for
+portability — a toolchain that does support it could use it unchanged),
+document the local failure honestly rather than hide or route around
+it, and get real sanitizer coverage via a `ubuntu-latest` CI job
+instead (`.github/workflows/ci.yml`'s `sanitize` job) — Linux GCC ships
+working sanitizer runtimes by default.
+
+**Why not switch toolchains to get sanitizers locally:** installing
+`clang64` is a large, uncertain-payoff addition (not confirmed to
+actually ship working sanitizer runtimes either, and effectively a
+second compiler toolchain for this one feature). Switching to MSVC
+(which does support ASan on Windows) was already explicitly rejected
+in Phase 0 (`docs/DECISIONS.md`, "IDE") for unrelated reasons — not
+worth revisiting just for this.
+
+**How to apply:** don't assume sanitizer flags "just work" on any given
+toolchain — verify directly (as done here) before relying on them.
+When a toolchain can't support a tool, prefer getting it in CI on a
+toolchain that can, over skipping it or forcing a local workaround.
+
+---
+
+### 2026-10-18 — Phase 11 closes coverage gaps in new files, not by editing earlier phases' tests
+
+**Decision:** three real coverage gaps found via `gcov` — all in
+earlier phases' code (`FileHandle`'s move assignment, Phase 7;
+`ComponentVisitor`'s OR/NOT/NOR dispatch, Phase 10; `NetlistLoader`'s
+remaining gate types + a parse-error path, Phase 5) — are closed by a
+**new** file, `tests/test_coverage_expansion.cpp`, not by adding cases
+to the original phases' test files (`test_file_handle.cpp`,
+`test_component_visitor.cpp`, `test_netlist_loader.cpp`).
+
+**Why:** the phase-isolation rule (never edit a previous phase's files)
+doesn't carve out an exception for "but I found a real gap in your
+tests" — if anything, that's exactly the situation the rule anticipated
+(`docs/DECISIONS.md`, "Phase isolation": *"If a later phase's design
+seems to genuinely require changing an earlier phase's file... stop and
+ask the user explicitly first."*). Adding new tests in a new file
+achieves the same coverage outcome without that conflict.
+
+**How to apply:** this is now the standard move whenever a future
+phase's tooling finds a gap in earlier code: new test file, reusing
+(not editing) whatever libraries it needs to test, named for what it's
+closing rather than tied to one specific earlier phase.
+
+---
+
+### 2026-10-21 — Sanitizers DO work on this machine, via MSVC (supersedes the 2026-10-18 "don't link" entry)
+
+**Finding:** the 2026-10-18 entry's finding about the primary MinGW/
+ucrt64 toolchain was correct and still stands — that specific toolchain
+has no `libasan`/`libubsan`. But the user explicitly asked to shift to
+Visual Studio to get sanitizers working rather than accept that as a
+final answer, which surfaced that VS2022 Community (C++ workload) was
+**already installed on this machine**, and its AddressSanitizer
+(`/fsanitize=address`, available since VS2019 16.9+) works. Verified,
+not just theoretically available: this project's entire test suite —
+all 90 tests — passes clean under it, and a deliberate standalone
+heap-buffer-overflow repro confirmed ASan genuinely catches real bugs
+(full account in `docs/phases/phase11.md`).
+
+**Decision:** keep the `EDA_ENABLE_SANITIZERS` CMake option, but have
+it branch on `if(MSVC)`: MSVC's `/fsanitize=address` (ASan only — MSVC
+has no UBSan equivalent) vs. the original `-fsanitize=address,undefined`
+for toolchains that support it (currently: the `ubuntu-latest` CI job
+only, still locally unavailable on MinGW). `scripts/sanitize-msvc.ps1`
+is the new, verified way to actually run this locally — it finds the
+VS2022 install via `vswhere.exe`, builds in a separate
+`build-msvc-sanitize/` directory (frontend/* and the pacman GTest are
+skipped under MSVC — ABI-incompatible, see `tests/CMakeLists.txt`), and
+runs `ctest`. The `ubuntu-latest` CI job stays, since it's the only
+path that still gets UBSan.
+
+**Why the earlier entry's "not worth revisiting" judgment on MSVC was
+wrong:** it treated "Phase 0 already rejected MSVC as the main IDE/
+toolchain" as closing the question of whether MSVC could be used *at
+all*, for *anything*. Those are different questions — Phase 0's
+decision was about the primary development toolchain end-to-end
+(editor, build system, day-to-day compiler); this is a narrow, opt-in,
+parallel path used for exactly one purpose (ASan), coexisting with the
+untouched MinGW primary toolchain. Worth noting for future "is X worth
+revisiting" judgment calls: a rejection scoped to one context doesn't
+automatically cover a much narrower, additive use of the same thing.
+
+**How to apply:** when a tool is "unavailable," check whether that's
+true of the *toolchain actually in use* or genuinely unavailable on
+*this machine* — they're not the same claim. An opt-in parallel build
+path (new CMake option branch, new script, frontend/tests gated
+behind `if(NOT MSVC)`) can add real capability without touching or
+risking the primary toolchain at all.

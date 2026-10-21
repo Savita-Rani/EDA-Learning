@@ -51,8 +51,15 @@ and a status snapshot, not the "why."
   `ComponentVisitor` depend on `Component`, `Signal<Args...>`
   independent — Visitor via external `dynamic_cast` dispatch since
   `Component` can't be edited to add `accept()`): `docs/phases/phase10.md`.
+- **Phase 11 — Testing & tooling** (new test file closing 3 real
+  coverage gaps found via `gcov`, measured at 98.22%; AddressSanitizer
+  unavailable on the primary MinGW toolchain, checked directly — but
+  verified working via MSVC, already installed on this machine, as a
+  parallel opt-in build path (`scripts/sanitize-msvc.ps1`, all 90 tests
+  pass under it); local CI script verified on both pass and fail
+  paths): `docs/phases/phase11.md`.
 
-All ten coexist in the same build.
+All eleven coexist in the same build.
 
 ## Build, run, test
 
@@ -72,13 +79,28 @@ cmake --build build
 ./build/bin/eda_parallel_demo.exe    # Phase 8 frontend
 ./build/bin/eda_imgui_demo.exe       # Phase 9 frontend — the first real GUI; run this one yourself and look
 ./build/bin/eda_patterns_demo.exe    # Phase 10 frontend
-cd build && ctest --output-on-failure   # all tests, all phases (86 total)
+cd build && ctest --output-on-failure   # all tests, all phases (90 total)
+```
+
+Or, as one command with a proper pass/fail exit code (Phase 11):
+
+```powershell
+powershell -File scripts/ci.ps1              # configure, build, test
+powershell -File scripts/ci.ps1 -Coverage    # ...plus a gcov coverage report
+```
+
+Or run the test suite under AddressSanitizer via MSVC (Phase 11;
+requires Visual Studio with the C++ workload — uses a separate build
+directory, doesn't touch the normal MinGW build):
+
+```powershell
+powershell -File scripts/sanitize-msvc.ps1
 ```
 
 Or open the folder in VS Code (CMake Tools + C/C++ extensions): build with
 `Ctrl+Shift+B`, debug with `F5` (`.vscode/tasks.json` / `launch.json`).
 
-See `docs/phases/phase1.md` through `phase10.md` for the full walkthrough
+See `docs/phases/phase1.md` through `phase11.md` for the full walkthrough
 (build details, VS Code steps, what each test checks and why,
 troubleshooting).
 
