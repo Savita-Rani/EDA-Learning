@@ -61,10 +61,16 @@ Write-Host "ASan runtime directory: $asanRuntimeDir" -ForegroundColor Cyan
 # ships a newer VS where only an 18.x install exists, not a 17.x one
 # -- "could not find any instance of Visual Studio"). Derived from
 # vswhere the same way the ASan runtime path above already is, instead
-# of assuming this machine's installed version forever.
+# of assuming this machine's installed version forever. The year half
+# is taken from cmake's own generator list rather than vswhere's
+# catalog_productLineVersion, which VS 2026 reports as "18", not "2026".
 $vsMajorVersion = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion).Split('.')[0]
-$vsProductLineVersion = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property catalog_productLineVersion
-$generator = "Visual Studio $vsMajorVersion $vsProductLineVersion"
+$generatorMatch = cmake --help | Select-String -Pattern "(Visual Studio $vsMajorVersion \d{4})"
+if (-not $generatorMatch) {
+    Write-Host "This CMake has no generator for Visual Studio $vsMajorVersion - a newer CMake is needed." -ForegroundColor Red
+    exit 1
+}
+$generator = $generatorMatch[0].Matches[0].Groups[1].Value
 Write-Host "Detected CMake generator: $generator" -ForegroundColor Cyan
 
 $env:PATH = "$asanRuntimeDir;" + $env:PATH

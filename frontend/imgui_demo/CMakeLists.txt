@@ -4,8 +4,8 @@
 # own project (there's no "ImGui.dll" to link) — fetched here via
 # FetchContent, pinned to a specific release tag for reproducibility.
 # GLFW (windowing/input) comes from MSYS2's pacman
-# (mingw-w64-ucrt-x86_64-glfw); OpenGL comes from the system
-# (opengl32, always present on Windows via the MinGW toolchain).
+# (mingw-w64-ucrt-x86_64-glfw); OpenGL comes from the system via
+# CMake's FindOpenGL (opengl32 on Windows, libGL on Linux).
 #
 # Depends on eda_netlist (Phase 3's Netlist, reused) and this phase's
 # own eda_waveform.
@@ -35,7 +35,8 @@ target_include_directories(imgui PUBLIC
 )
 
 find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(imgui PUBLIC glfw opengl32)
+find_package(OpenGL REQUIRED)
+target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
 add_executable(eda_imgui_demo
     main.cpp
