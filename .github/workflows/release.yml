@@ -1,0 +1,127 @@
+# .github/workflows/release.yml
+#
+# Builds the project in Release mode on Windows (same MSYS2 ucrt64
+# toolchain as ci.yml) and Linux, runs the tests, and packages the
+# demo executables (test/benchmark binaries are left out).
+#
+#   git tag v1.0.0 && git push origin v1.0.0
+#       -> builds both platforms and publishes a GitHub Release with
+#          eda-<tag>-windows-x64.zip and eda-<tag>-linux-x64.tar.gz
+#   Actions tab -> Release -> "Run workflow"
+#       -> same build, but only uploads the packages as run artifacts
+#          (no Release is created without a tag)
+#
+# Windows: the MinGW runtime and GLFW DLLs each exe needs are copied in
+# next to it, so the zip runs on a machine without MSYS2.
+# Linux: binaries link the system GLFW/OpenGL, so running
+# eda_imgui_demo needs libglfw3 installed (apt install libglfw3).
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to create the GitHub Release
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-make
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-gtest
+            mingw-w64-ucrt-x86_64-glfw
+            zip
+
+      - name: Configure
+        run: cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j
+
+      - name: Test
+        run: cd build && ctest --output-on-failure
+
+      - name: Package
+        run: |
+          NAME=eda-${GITHUB_REF_NAME//\//-}-windows-x64
+          mkdir -p dist/$NAME
+          for f in build/bin/*.exe; do
+            case "$f" in *_tests.exe|*_bench.exe) continue ;; esac
+            cp "$f" dist/$NAME/
+          done
+          # Bundle the MSYS2 DLLs (libstdc++, libgcc, winpthread, glfw3...)
+          ldd dist/$NAME/*.exe | awk '/\/ucrt64\// {print $3}' | sort -u \
+            | xargs -r -I{} cp {} dist/$NAME/
+          cp README* dist/$NAME/ 2>/dev/null || true
+          cd dist && zip -r $NAME.zip $NAME
+          echo "ASSET=dist/$NAME.zip" >> $GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: ${{ env.ASSET }}
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libgtest-dev libgl1-mesa-dev libglfw3-dev
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j
+
+      - name: Test
+        run: cd build && ctest --output-on-failure
+
+      - name: Package
+        run: |
+          NAME=eda-${GITHUB_REF_NAME//\//-}-linux-x64
+          mkdir -p dist/$NAME
+          find build/bin -maxdepth 1 -type f -executable \
+            ! -name '*_tests' ! -name '*_bench' -exec cp {} dist/$NAME/ \;
+          cp README* dist/$NAME/ 2>/dev/null || true
+          tar -C dist -czf dist/$NAME.tar.gz $NAME
+          echo "ASSET=dist/$NAME.tar.gz" >> $GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: ${{ env.ASSET }}
+
+  publish:
+    # Only tag pushes create a Release; manual runs stop at the artifacts.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
