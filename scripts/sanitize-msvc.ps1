@@ -54,13 +54,26 @@ $asanRuntimeDir = Join-Path $msvcVersionDirs[0].FullName "bin\Hostx64\x64"
 Write-Host "Using MSVC toolset: $($msvcVersionDirs[0].Name)" -ForegroundColor Cyan
 Write-Host "ASan runtime directory: $asanRuntimeDir" -ForegroundColor Cyan
 
+# CMake's "Visual Studio <major> <year>" generator name is NOT a fixed
+# string -- it changes with whatever VS version is actually installed
+# (confirmed the hard way: this was hardcoded to "Visual Studio 17
+# 2022" and failed on GitHub Actions' windows-latest runner, which
+# ships a newer VS where only an 18.x install exists, not a 17.x one
+# -- "could not find any instance of Visual Studio"). Derived from
+# vswhere the same way the ASan runtime path above already is, instead
+# of assuming this machine's installed version forever.
+$vsMajorVersion = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion).Split('.')[0]
+$vsProductLineVersion = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property catalog_productLineVersion
+$generator = "Visual Studio $vsMajorVersion $vsProductLineVersion"
+Write-Host "Detected CMake generator: $generator" -ForegroundColor Cyan
+
 $env:PATH = "$asanRuntimeDir;" + $env:PATH
 $env:ASAN_WIN_CONTINUE_ON_INTERCEPTION_FAILURE = "1"
 
 $buildDir = "build-msvc-sanitize"
 
-Write-Host "=== Configure (Visual Studio 17 2022, x64, AddressSanitizer) ===" -ForegroundColor Cyan
-cmake -S . -B $buildDir -G "Visual Studio 17 2022" -A x64 -DEDA_ENABLE_SANITIZERS=ON
+Write-Host "=== Configure ($generator, x64, AddressSanitizer) ===" -ForegroundColor Cyan
+cmake -S . -B $buildDir -G $generator -A x64 -DEDA_ENABLE_SANITIZERS=ON
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "=== Build ===" -ForegroundColor Cyan
