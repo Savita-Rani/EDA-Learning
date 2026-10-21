@@ -34,7 +34,7 @@ just "how this repo uses it." First one: `docs/notes/gtest.md`.
 | 9 | Frontend | Dear ImGui schematic + waveform view (depends on Phase 3's `Netlist`) | immediate-mode GUI loop, `FetchContent`, CMake `INTERFACE` libraries, vendoring third-party source | ✅ done |
 | 10 | Design patterns | `ComponentFactory`/`ComponentVisitor` (depend on `Component`) + `Signal<Args...>` (independent) | Factory, Visitor via external dispatch (RTTI), variadic templates, tested strong exception-safety guarantees | ✅ done |
 | 11 | Testing | Measured coverage (98.22% backend/src, every gap explained), sanitizers (ASan unavailable on primary MinGW toolchain, checked — but verified working via MSVC, already installed), CI script + workflow | `gcov`/`--coverage`, CMake options, exit-code-propagating scripts, MSVC AddressSanitizer | ✅ done |
-| 12 | Performance | Profiling & optimization | cache-friendly layout, benchmarking | planned |
+| 12 | Performance | `FastNetlist` (parallel technique to Phase 3's `Netlist`, caches the topological sort + interns wire names to indices) | `gprof` tried and found broken on this toolchain (`-mfentry`/SEH, checked directly), `std::chrono` wall-clock benchmarking instead, lazy caching with a dirty flag, string interning | ✅ done |
 
 ## Why this order — the causal chain between phases
 
@@ -56,7 +56,7 @@ row's "leaves open" is the next row's "fixes."
 | 9 | Frontend (ImGui) ✅ | A real UI: schematic view (live checkboxes + colored wire values) + waveform viewer (`PlotLines`), wired to Phase 3's `Netlist`. First genuinely external dependencies (ImGui/GLFW/OpenGL); first phase whose main deliverable can't be verified by automated testing alone — a `--max-frames` smoke-test mode confirms it runs without crashing, but visual correctness needs a human to actually look. | The architecture (how gates/wires/the engine relate) has accreted informally across 9 phases — never named or cleaned up as patterns. |
 | 10 | Design patterns ✅ | Factory (`ComponentFactory`, component creation), Visitor (`ComponentVisitor`, over a collection of `Component`s — not literally traversing a `Netlist` instance, since `Netlist`'s internals are private and off-limits to extend; built against `Component` directly instead), refined Observer (`Signal<Args...>`, generalizing Phase 4's wire-watching) — the informal structures from earlier phases get named, cleaned up, made reusable. | By now the codebase is large enough that manual spot-checking isn't sufficient assurance of correctness. |
 | 11 | Testing & tooling ✅ | Measured (not guessed) coverage via `gcov` — 94.40% on first measurement, 98.22% after closing 3 real gaps found by reading the actual uncovered lines, every remaining gap individually explained. Sanitizers checked directly and found unavailable on the primary MinGW toolchain (no `libasan`/`libubsan`) — rather than stopping there, shifted to MSVC (already installed) and verified its AddressSanitizer works end-to-end: all 90 tests pass under it, and a deliberate standalone repro confirmed it catches real bugs. A local CI script verified on both the pass and fail path, plus a GitHub Actions workflow with three jobs (`windows`, `windows-asan`, `sanitize`) — written, explicitly not yet run — no remote. | Correctness is now trustworthy, but nothing has been measured for speed — premature optimization before this point would have been wasted effort on code that was still changing shape. |
-| 12 | Performance | Profile real bottlenecks, optimize data layout for cache-friendliness, benchmark before/after. Last, deliberately — only after correctness is established. | *(end of planned roadmap)* |
+| 12 | Performance ✅ | Found Phase 3's real bottleneck directly in `Netlist::simulate()` — it re-runs the full topological sort on every call, even though circuit topology never changes between calls. Tried `gprof` to confirm with real profiling data first; found it genuinely broken on this toolchain (`-pg` emits `__fentry__` calls, required by SEH, which this `gprof` can't read — checked directly, not assumed). Fell back to a `std::chrono` wall-clock benchmark instead: `FastNetlist` (caches the evaluation order, interns wire names to integer indices) measured a consistent ~18.5x speedup across a 40x range of circuit sizes — a constant-factor fix, not a complexity-class one, confirmed by the ratio holding steady rather than scaling with size. Last, deliberately — only attempted after correctness was established in Phase 11. | *(end of the original planned roadmap — any further work is added depth, not a new rung)* |
 
 **The thesis:** difficulty tracks necessity, not a fixed syllabus order —
 each phase is "advanced" relative to the last specifically because the
@@ -135,3 +135,12 @@ the plan.
   there, shifted to MSVC (already installed on this machine) as a
   parallel opt-in build path and verified its AddressSanitizer actually
   works (all 90 tests clean, a deliberate bug repro genuinely caught).
+  Phase 12 is another parallel technique, like Phases 4/6: `FastNetlist`
+  solves the same problem as Phase 3's `Netlist` without editing it,
+  caching what `Netlist` recomputes every call. `gprof` was tried first
+  and found broken on this toolchain for a real, checkable reason
+  (`-mfentry`/SEH) — the same "confirm, don't assume" standard Phase 11
+  held sanitizers to — so the evidence instead comes from a `std::chrono`
+  benchmark whose ratio stayed constant across very different circuit
+  sizes, the signature of a constant-factor fix rather than an
+  algorithmic one.

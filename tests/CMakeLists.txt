@@ -253,3 +253,22 @@ else()
 endif()
 
 gtest_discover_tests(eda_coverage_tests)
+
+# --- Phase 12 (Performance) — separate target, everything above untouched -
+# Tests FastNetlist (eda_fast_netlist) — an independent, cache-friendly
+# reimplementation of Phase 3's Netlist, not an edit to it. See
+# backend/include/eda/FastNetlist.h and docs/phases/phase12.md.
+
+add_executable(eda_fast_netlist_tests
+    test_fast_netlist.cpp
+)
+
+target_link_libraries(eda_fast_netlist_tests PRIVATE eda_fast_netlist GTest::gtest_main)
+
+if(MSVC)
+    target_compile_options(eda_fast_netlist_tests PRIVATE /W4)
+else()
+    target_compile_options(eda_fast_netlist_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+gtest_discover_tests(eda_fast_netlist_tests)

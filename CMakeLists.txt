@@ -39,9 +39,24 @@ enable_testing()
 option(EDA_ENABLE_COVERAGE "Build with --coverage (gcov) instrumentation" OFF)
 option(EDA_ENABLE_SANITIZERS "Build with AddressSanitizer (+ UBSan where available)" OFF)
 
+# --- Phase 12 (Performance) ------------------------------------------------
+# OFF by default, same convention as the two options above. -pg (gprof
+# instrumentation) is GCC/Clang-specific, like --coverage — not
+# meaningful under MSVC, so this one simply does nothing there rather
+# than branching to an MSVC equivalent (Visual Studio's own profiler is
+# a GUI tool, not a drop-in compiler flag; not wired up here since the
+# profiling that motivated Phase 12 was done on the primary MinGW
+# toolchain — see docs/phases/phase12.md).
+option(EDA_ENABLE_PROFILING "Build with -pg (gprof) instrumentation" OFF)
+
 if(EDA_ENABLE_COVERAGE)
     add_compile_options(--coverage -O0 -g)
     add_link_options(--coverage)
+endif()
+
+if(EDA_ENABLE_PROFILING AND NOT MSVC)
+    add_compile_options(-pg -O2)
+    add_link_options(-pg)
 endif()
 
 if(EDA_ENABLE_SANITIZERS)
@@ -63,6 +78,11 @@ endif()
 # tests/          -> eda_tests, run via `ctest`; links only against eda_core.
 add_subdirectory(backend)
 add_subdirectory(tests)
+
+# benchmarks/ (Phase 12) — only depends on backend libraries (eda_netlist,
+# eda_fast_netlist), no GoogleTest/GLFW, so this builds under both the
+# primary MinGW toolchain and MSVC, unlike frontend/* below.
+add_subdirectory(benchmarks)
 
 # frontend/* — GLFW/GoogleTest here were installed via pacman for the
 # MinGW ABI; they're not binary-compatible with MSVC (different C++

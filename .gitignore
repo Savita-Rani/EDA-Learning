@@ -5,10 +5,12 @@ build/
 build-coverage/
 build-sanitize/
 build-msvc-sanitize/
+build-profile/
 *.o
 *.obj
 *.exe
 *.pdb
+gmon.out
 .cache/
 compile_commands.json
 *.gcov

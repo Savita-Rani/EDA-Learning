@@ -58,8 +58,15 @@ and a status snapshot, not the "why."
   parallel opt-in build path (`scripts/sanitize-msvc.ps1`, all 90 tests
   pass under it); local CI script verified on both pass and fail
   paths): `docs/phases/phase11.md`.
+- **Phase 12 — Performance** (new files; `FastNetlist` is a parallel
+  technique to Phase 3's `Netlist`, caching the topological sort and
+  interning wire names to integer indices instead of hashing strings
+  every `simulate()` call; `gprof` tried first and found genuinely
+  broken on this toolchain — checked directly, see the doc — so a
+  `std::chrono` wall-clock benchmark measured a consistent ~18.5x
+  speedup across three circuit sizes instead): `docs/phases/phase12.md`.
 
-All eleven coexist in the same build.
+All twelve coexist in the same build.
 
 ## Build, run, test
 
@@ -79,7 +86,8 @@ cmake --build build
 ./build/bin/eda_parallel_demo.exe    # Phase 8 frontend
 ./build/bin/eda_imgui_demo.exe       # Phase 9 frontend — the first real GUI; run this one yourself and look
 ./build/bin/eda_patterns_demo.exe    # Phase 10 frontend
-cd build && ctest --output-on-failure   # all tests, all phases (90 total)
+cd build && ctest --output-on-failure   # all tests, all phases (96 total)
+./build/bin/eda_netlist_bench.exe    # Phase 12 — Netlist vs FastNetlist, real timing numbers
 ```
 
 Or, as one command with a proper pass/fail exit code (Phase 11):
@@ -100,7 +108,7 @@ powershell -File scripts/sanitize-msvc.ps1
 Or open the folder in VS Code (CMake Tools + C/C++ extensions): build with
 `Ctrl+Shift+B`, debug with `F5` (`.vscode/tasks.json` / `launch.json`).
 
-See `docs/phases/phase1.md` through `phase11.md` for the full walkthrough
+See `docs/phases/phase1.md` through `phase12.md` for the full walkthrough
 (build details, VS Code steps, what each test checks and why,
 troubleshooting).
 
@@ -141,6 +149,10 @@ backend/
   src/BufferGate.cpp,
   src/ComponentFactory.cpp,
   src/ComponentVisitor.cpp   -> eda_patterns (static library, links eda_oop)
+  include/eda/FastNetlist.h,
+  src/FastNetlist.cpp        -> eda_fast_netlist (Phase 12 — parallel
+                                 technique to Netlist, links eda_oop,
+                                 NOT eda_netlist)
 frontend/
   console/              Phase 1 UI — links eda_core only
   console_phase2/       Phase 2 UI — links eda_oop only
@@ -175,11 +187,24 @@ tests/
   test_component_factory.cpp,
   test_component_visitor.cpp           -> eda_patterns_tests (Phase 10, GoogleTest)
   test_signal.cpp                       -> eda_signal_tests (Phase 10, GoogleTest)
+  test_coverage_expansion.cpp            -> eda_coverage_tests (Phase 11, GoogleTest —
+                                             closes gaps in Phases 5/7/10's own code,
+                                             without editing their test files)
+  test_fast_netlist.cpp                   -> eda_fast_netlist_tests (Phase 12, GoogleTest)
+benchmarks/
+  netlist_bench.cpp      -> eda_netlist_bench (Phase 12 — links eda_netlist
+                             + eda_fast_netlist directly, std::chrono timing,
+                             no GoogleTest/GLFW dependency)
+scripts/                 (Phase 11) ci.ps1 (local CI, pass/fail verified),
+                           coverage-report.ps1 (gcov aggregation),
+                           sanitize-msvc.ps1 (MSVC AddressSanitizer run)
+.github/workflows/ci.yml  (Phase 11) windows / windows-asan / sanitize jobs —
+                           written, unverified (no remote configured)
 docs/
   PROJECT_IDEA.md       the vision/why, read this first
   ROADMAP.md            all 12 phases, concepts + status + why (causal chain)
   DECISIONS.md           dated log of choices + rationale
-  phases/phase1.md ... phase10.md  one doc per phase
+  phases/phase1.md ... phase12.md  one doc per phase
   notes/gtest.md, ...    cross-cutting reference notes (revision/interview prep)
 .vscode/              tasks.json (build), launch.json (gdb debug), settings.json
 build/                (gitignored) CMake build output -> build/bin/*.exe

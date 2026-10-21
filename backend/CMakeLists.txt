@@ -212,3 +212,24 @@ endif()
 
 add_library(eda_signal INTERFACE)
 target_include_directories(eda_signal INTERFACE include)
+
+# --- Phase 12 (Performance) — separate target, nothing above touched -----
+# FastNetlist (eda/FastNetlist.h) depends on eda_oop's Component (reused,
+# like Phases 3/4/6/8/9/10) but is INDEPENDENT of eda_netlist — a second,
+# parallel technique for the same problem Netlist solves, not an edit to
+# it. See docs/DECISIONS.md, "Phase 12 is a parallel technique, not a
+# Netlist edit," and docs/phases/phase12.md for the profiling that
+# motivated it.
+
+add_library(eda_fast_netlist STATIC
+    src/FastNetlist.cpp
+)
+
+target_include_directories(eda_fast_netlist PUBLIC include)
+target_link_libraries(eda_fast_netlist PUBLIC eda_oop)
+
+if(MSVC)
+    target_compile_options(eda_fast_netlist PRIVATE /W4)
+else()
+    target_compile_options(eda_fast_netlist PRIVATE -Wall -Wextra -Wpedantic)
+endif()

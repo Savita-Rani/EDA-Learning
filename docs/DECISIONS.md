@@ -714,3 +714,70 @@ true of the *toolchain actually in use* or genuinely unavailable on
 path (new CMake option branch, new script, frontend/tests gated
 behind `if(NOT MSVC)`) can add real capability without touching or
 risking the primary toolchain at all.
+
+---
+
+### 2026-10-21 — Phase 12 is a parallel technique, not a Netlist edit
+
+**Decision:** `FastNetlist` (`backend/include/eda/FastNetlist.h` +
+`backend/src/FastNetlist.cpp`) solves the exact same problem as Phase
+3's `Netlist` — same public shape (`addComponent`/`setInput`/
+`simulate`/`wireValue`) — but is a brand-new, independent
+implementation, not an edit to `Netlist.cpp`. It caches the topological
+sort instead of recomputing it every `simulate()` call, and interns
+wire names to integer indices instead of hashing strings in the hot
+loop.
+
+**Why:** the phase-isolation rule already has this exact shape of
+exception precedented — Phase 4's `EventSimulator` and Phase 6's
+`LogicGate<T>` are both independent, parallel techniques for a problem
+an earlier phase already solved, kept separate specifically so the two
+can be compared side by side (see the "Phase 4 is a parallel technique"
+and "Phase 6 is independent" entries above). A performance phase
+*editing* `Netlist.cpp` directly would both violate the isolation rule
+and destroy the ability to measure "before vs. after" as two coexisting
+implementations — the comparison itself is the evidence a performance
+claim needs.
+
+**How to apply:** this is the standard shape for any future phase whose
+whole point is "do X better than an earlier phase's Y" — new file, new
+class, same public interface where that helps comparison, benchmarked
+against the original rather than replacing it.
+
+---
+
+### 2026-10-21 — `gprof` doesn't work on this toolchain (`-mfentry`/SEH); wall-clock benchmarking used instead
+
+**Finding:** `-pg` (GCC's classic profiling instrumentation) built and
+ran without any error, but `gprof` against the resulting `gmon.out`
+produced an empty flat profile and an empty call graph — no data at
+all, not just sparse data. Checked why rather than assuming `-pg`
+"just doesn't work here": `objdump -r` on the instrumented object files
+showed relocations to `__fentry__`, not the classic `mcount` symbol
+`gprof` expects. GCC 13.2.0 on this MinGW/ucrt64 target uses
+`-mfentry`-style instrumentation by default. The documented escape
+hatch, `-mno-fentry`, is rejected outright:
+`cc1plus.exe: sorry, unimplemented: '-mno-fentry' isn't compatible with SEH`
+— x86-64 Windows requires SEH for exception handling, and SEH requires
+the `-mfentry` prologue hooks, so there is no way to get `gprof`-
+compatible instrumentation on this toolchain at all.
+
+**Decision:** don't fight the toolchain for a profiler breakdown it
+genuinely cannot produce here. Use direct `std::chrono::steady_clock`
+wall-clock benchmarking instead (`benchmarks/netlist_bench.cpp`),
+checked against a specific, falsifiable prediction (a constant-factor
+fix should show a size-independent speedup ratio; a complexity-class
+fix would show the ratio changing with size) rather than asserting
+"this should be faster" and moving on. `EDA_ENABLE_PROFILING` (`-pg`)
+is kept in the build regardless — it's a real feature on toolchains
+where `gprof` does understand `__fentry__`, or on non-Windows GCC
+targets using classic `mcount` — just not useful for a flat/call-graph
+breakdown on *this* machine's toolchain specifically.
+
+**How to apply:** this is the same standard Phase 11 held
+AddressSanitizer/UBSan to — confirm a tool is actually broken (minimal
+repro, checked the generated code/relocations directly) before
+documenting it as unavailable, and look for a working substitute
+before giving up on the underlying *question* the tool was meant to
+answer. See `docs/phases/phase12.md` for the full investigation and the
+benchmark data that substituted for the missing profiler breakdown.
